@@ -10,12 +10,15 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:guards": "jest packages/guards/tests/",
     "schema:validate": "ajv validate -s docs/schemas/intent-graph-schema.json -d 'docs/examples/*.yaml' --verbose",
-    "schema:test": "npm run schema:validate && npm run schema:check-keywords",
+    "schema:test": "npm run schema:validate && npm run schema:test:guard-config && npm run schema:check-keywords",
+    "schema:test:guard-config": "npx ajv-cli compile -s docs/schemas/guard-config-schema.json",
     "schema:check-keywords": "grep -E '(apiVersion|kind|metadata|spec)' docs/schemas/*.yaml || (echo 'ERROR: Required keywords missing from schema files' && exit 1)",
     "schema:install": "npm install -g ajv-cli",
     "schema:example": "ajv validate -s docs/schemas/intent-graph-schema.json -d docs/examples/intent-graph-examples.yaml",
-    "prettier:fix": "prettier --write docs/**/*.{md,yaml,json}"
+    "prettier:fix": "prettier --write docs/**/*.{md,yaml,json}",
+    "tsc:check": "npx tsc --project tsconfig.json --noEmit --skipLibCheck"
   },
   "keywords": [
     "workflow",
@@ -26,8 +29,12 @@
     "schema"
   ],
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "ajv-cli": "^5.0.0",
+    "jest": "^29.7.0",
     "prettier": "^3.5.3",
+    "ts-jest": "^29.3.4",
+    "typescript": "^5.8.3",
     "yaml": "^2.3.4"
   },
   "engines": {

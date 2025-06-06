@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://intentive.dev/schemas/guard-config-v1.json",
+  "title": "Guard Configuration Schema",
+  "description": "JSON Schema for guard configuration validation (v0.1 lean scope)",
+  "anyOf": [
+    {
+      "$ref": "#/definitions/rbacConfig"
+    },
+    {
+      "$ref": "#/definitions/rateLimitConfig"
+    }
+  ],
+  "definitions": {
+    "rbacConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "requiredRoles"],
+      "properties": {
+        "type": { "const": "rbac" },
+        "requiredRoles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "List of roles required to pass this guard"
+        },
+        "requiredPermissions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional list of permissions required"
+        },
+        "allowSuperuser": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether superuser role bypasses all checks"
+        }
+      }
+    },
+    "rateLimitConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "maxRequests", "windowMs"],
+      "properties": {
+        "type": { "const": "rate_limit" },
+        "maxRequests": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Maximum number of requests allowed in the window"
+        },
+        "windowMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 86400000,
+          "description": "Time window in milliseconds (1s to 24h)"
+        },
+        "keyGenerator": {
+          "type": "string",
+          "enum": ["user", "ip", "custom"],
+          "default": "user",
+          "description": "How to generate rate limit keys"
+        }
+      }
+    }
+  }
+} 

@@ -445,8 +445,7 @@
           "$ref": "#/definitions/guardApplyTo"
         },
         "config": {
-          "type": "object",
-          "additionalProperties": true
+          "$ref": "./guard-config-schema.json"
         },
         "metadata": {
           "type": "object",
