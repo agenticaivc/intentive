@@ -1,0 +1,326 @@
+# Intent Graph YAML Schema
+# Version: v1.0.0
+# Description: YAML schema definition for Intentive intent graph definitions
+# References: Issue 1 core concepts (intent, node, edge, guard, execution context)
+
+apiVersion: intentive.dev/v1
+kind: IntentGraph
+metadata:
+  name: example-graph
+  description: "Example intent graph schema"
+  version: "1.0.0"
+  author: "intentive"
+  created: "2024-01-01T00:00:00Z"
+spec:
+  # Collection of intent nodes - individual executable operations or decision points
+  nodes:
+    # Example action node - executes a specific operation
+    - id: "authenticate_user"
+      type: "action"
+      properties:
+        name: "Authenticate User"
+        description: "Verify user credentials and permissions"
+        handler: "auth.authenticate"
+        parameters:
+          - name: "user_id"
+            type: "string"
+            required: true
+            description: "User identifier"
+          - name: "session_token"
+            type: "string"
+            required: true
+            description: "Session authentication token"
+      metadata:
+        tags: ["authentication", "security"]
+        estimated_duration: "1s"
+    
+    - id: "process_payroll"
+      type: "action"
+      properties:
+        name: "Process Payroll"
+        description: "Execute payroll processing for specified period"
+        handler: "payroll.process"
+        parameters:
+          - name: "pay_period"
+            type: "string"
+            required: true
+            description: "Payroll period in YYYY-MM format"
+            pattern: "^[0-9]{4}-[0-9]{2}$"
+            example: "2024-01"
+          - name: "employees"
+            type: "array"
+            required: false
+            description: "Optional list of employee IDs to process"
+            items:
+              type: "string"
+            default: []
+          - name: "dry_run"
+            type: "boolean"
+            required: false
+            description: "Preview mode without actual processing"
+            default: false
+      metadata:
+        tags: ["payroll", "finance"]
+        estimated_duration: "5m"
+        priority: "high"
+    
+    # Example decision node - conditional logic
+    - id: "check_approval_status"
+      type: "decision"
+      properties:
+        name: "Check Approval Status"
+        description: "Verify if payroll has been approved by management"
+        handler: "approval.check"
+        parameters:
+          - name: "approval_id"
+            type: "string"
+            required: true
+            description: "Unique approval identifier"
+        conditions:
+          - field: "approval.status"
+            operator: "equals"
+            value: "approved"
+            output: "approved"
+          - field: "approval.status"
+            operator: "equals"
+            value: "pending"
+            output: "pending"
+          - field: "approval.status"
+            operator: "equals"
+            value: "rejected"
+            output: "rejected"
+      metadata:
+        tags: ["approval", "governance"]
+        estimated_duration: "30s"
+    
+    # Example data transformation node
+    - id: "calculate_totals"
+      type: "data"
+      properties:
+        name: "Calculate Payroll Totals"
+        description: "Sum up all payroll amounts and taxes"
+        handler: "payroll.calculate"
+        parameters:
+          - name: "employee_data"
+            type: "object"
+            required: true
+            description: "Employee payroll data structure"
+            properties:
+              employee_id:
+                type: "string"
+                required: true
+              base_salary:
+                type: "number"
+                required: true
+                minimum: 0
+              overtime_hours:
+                type: "number"
+                required: false
+                minimum: 0
+                maximum: 80
+                default: 0
+        output:
+          type: "object"
+          properties:
+            total_gross:
+              type: "number"
+            total_taxes:
+              type: "number"
+            total_net:
+              type: "number"
+      metadata:
+        tags: ["calculation", "payroll"]
+        estimated_duration: "2m"
+  
+  # Relationships between nodes - define execution flow and dependencies
+  edges:
+    # Sequential execution edge
+    - id: "auth_to_approval"
+      from: "authenticate_user"
+      to: "check_approval_status"
+      type: "sequence"
+      properties:
+        name: "Authentication to Approval Check"
+        description: "Proceed to approval check after successful authentication"
+      conditions:
+        - field: "auth.result"
+          operator: "equals"
+          value: "success"
+        - field: "user.role"
+          operator: "in"
+          value: ["admin", "payroll_manager", "hr_manager"]
+      metadata:
+        priority: "high"
+    
+    # Conditional execution edge with complex logic
+    - id: "approval_to_calculation"
+      from: "check_approval_status"
+      to: "calculate_totals"
+      type: "conditional"
+      properties:
+        name: "Approved to Calculation"
+        description: "Calculate totals only if payroll is approved"
+      conditions:
+        - logic: "AND"
+          rules:
+            - field: "approval.status"
+              operator: "equals"
+              value: "approved"
+            - field: "approval.timestamp"
+              operator: "within_hours"
+              value: 24
+      metadata:
+        condition_description: "Payroll approved within last 24 hours"
+    
+    # Conditional edge with OR logic
+    - id: "calculation_to_processing"
+      from: "calculate_totals"
+      to: "process_payroll"
+      type: "conditional"
+      properties:
+        name: "Calculation to Processing"
+        description: "Process payroll after successful calculation"
+      conditions:
+        - logic: "OR"
+          rules:
+            - field: "totals.amount"
+              operator: "greater_than"
+              value: 0
+            - field: "processing.force_run"
+              operator: "equals"
+              value: true
+      metadata:
+        condition_description: "Process if amounts > 0 OR force run enabled"
+    
+    # Sequential edge with data transformation
+    - id: "approval_rejected_path"
+      from: "check_approval_status"
+      to: "authenticate_user"  # Loop back for re-authentication
+      type: "sequence"
+      properties:
+        name: "Rejection Flow"
+        description: "Return to authentication if approval rejected"
+      conditions:
+        - field: "approval.status"
+          operator: "equals"
+          value: "rejected"
+      data_mapping:
+        - source: "approval.rejection_reason"
+          target: "auth.error_message"
+        - source: "approval.retry_allowed"
+          target: "auth.allow_retry"
+      metadata:
+        is_error_path: true
+  
+  # Security and validation rules - applied to nodes, edges, or entire graph
+  guards:
+    # RBAC (Role-Based Access Control) guard
+    - name: "payroll_rbac_check"
+      type: "rbac"
+      description: "Enforce role-based access control for payroll operations"
+      apply_to:
+        nodes: ["process_payroll", "calculate_totals"]
+        edges: ["calculation_to_processing"]
+      config:
+        required_roles: ["payroll_admin", "finance_manager"]
+        required_permissions: ["payroll:write", "finance:calculate"]
+        check_mode: "strict"  # strict | permissive
+        failure_action: "block"  # block | warn | audit
+      metadata:
+        priority: "critical"
+        description: "Ensures only authorized users can execute payroll operations"
+    
+    # Rate limiting guard
+    - name: "payroll_rate_limit"
+      type: "rate_limit"
+      description: "Prevent excessive payroll processing requests"
+      apply_to:
+        nodes: ["process_payroll"]
+      config:
+        max_requests: 5
+        time_window: "1h"  # 1 hour
+        per_user: true
+        burst_allowance: 2
+        failure_action: "delay"  # delay | block | warn
+        backoff_strategy: "exponential"
+      metadata:
+        priority: "medium"
+        description: "Limits payroll processing to 5 requests per hour per user"
+    
+    # Audit logging guard
+    - name: "sensitive_operations_audit"
+      type: "audit"
+      description: "Log all sensitive financial operations for compliance"
+      apply_to:
+        nodes: ["process_payroll", "calculate_totals", "check_approval_status"]
+        edges: ["approval_to_calculation", "calculation_to_processing"]
+      config:
+        log_level: "info"
+        include_parameters: true
+        include_results: false  # Don't log sensitive payroll data
+        retention_days: 2555  # 7 years for financial compliance
+        destinations: ["audit_db", "siem_system"]
+        encrypt_logs: true
+      metadata:
+        priority: "high"
+        compliance: ["SOX", "GDPR", "PCI-DSS"]
+    
+    # Custom validation guard
+    - name: "payroll_business_rules"
+      type: "custom"
+      description: "Enforce business-specific payroll validation rules"
+      apply_to:
+        nodes: ["process_payroll"]
+      config:
+        handler: "payroll.validate_business_rules"
+        rules:
+          - name: "minimum_wage_check"
+            expression: "employee.hourly_rate >= jurisdiction.minimum_wage"
+            message: "Hourly rate cannot be below minimum wage"
+          - name: "overtime_limit_check"  
+            expression: "employee.overtime_hours <= 80"
+            message: "Overtime hours cannot exceed 80 per period"
+          - name: "payroll_period_validation"
+            expression: "pay_period.start_date < pay_period.end_date"
+            message: "Payroll period start must be before end date"
+        failure_action: "block"
+      metadata:
+        priority: "high"
+        description: "Validates business rules before processing payroll"
+    
+    # Time-based access guard
+    - name: "business_hours_only"
+      type: "temporal"
+      description: "Restrict payroll processing to business hours"
+      apply_to:
+        nodes: ["process_payroll"]
+      config:
+        allowed_days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        allowed_hours:
+          start: "08:00"
+          end: "17:00"
+        timezone: "America/New_York"
+        exceptions:
+          - date: "2024-12-31"  # Year-end processing
+            hours:
+              start: "00:00"
+              end: "23:59"
+        failure_action: "block"
+      metadata:
+        priority: "medium"
+        description: "Ensures payroll processing only during business hours"
+    
+    # NOTE: Guard execution order and dependencies deferred to Issue 3
+    # Future: guard_dependencies, execution_order, guard_chains
+  
+  # Execution configuration - runtime settings and parameters
+  config:
+    # Default execution timeout in seconds
+    timeout: 300
+    # Retry policy for failed operations
+    retry:
+      maxAttempts: 3
+      backoffMultiplier: 2
+    # Parallel execution limits
+    concurrency:
+      maxParallel: 5 

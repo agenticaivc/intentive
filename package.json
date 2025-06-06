@@ -1,0 +1,27 @@
+{
+  "name": "intentive",
+  "version": "1.0.0",
+  "description": "Intent graph automation platform",
+  "scripts": {
+    "schema:test": "npm run schema:validate && npm run schema:check-keywords",
+    "schema:validate": "ajv validate -s docs/schemas/intent-graph-schema.json -d 'docs/examples/*.yaml' --verbose",
+    "schema:check-keywords": "grep -E '(apiVersion|kind|metadata|spec)' docs/schemas/*.yaml || (echo 'ERROR: Required keywords missing from schema files' && exit 1)",
+    "schema:install": "npm install -g ajv-cli",
+    "schema:example": "ajv validate -s docs/schemas/intent-graph-schema.json -d docs/examples/intent-graph-examples.yaml"
+  },
+  "keywords": [
+    "workflow",
+    "automation",
+    "intent",
+    "graph",
+    "yaml",
+    "schema"
+  ],
+  "devDependencies": {
+    "ajv-cli": "^5.0.0",
+    "yaml": "^2.3.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 

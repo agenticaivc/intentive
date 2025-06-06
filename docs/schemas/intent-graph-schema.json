@@ -1,0 +1,496 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://intentive.dev/schemas/intent-graph-v1.json",
+  "title": "Intent Graph Schema",
+  "description": "JSON Schema validation for Intentive Intent Graph YAML definitions. Note: `node.id`, `edge.id`, and `guard.name` MUST be unique across the entire graph (enforced by a future custom validator).",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "enum": ["intentive.dev/v1"],
+      "description": "API version identifier"
+    },
+    "kind": {
+      "type": "string", 
+      "enum": ["IntentGraph"],
+      "description": "Resource type"
+    },
+    "metadata": {
+      "$ref": "#/definitions/metadata"
+    },
+    "spec": {
+      "$ref": "#/definitions/spec"
+    }
+  },
+  "definitions": {
+    "simpleEnums": {
+      "nodeTypes": ["action", "decision", "data"],
+      "edgeTypes": ["sequence", "conditional"],
+      "guardTypes": ["rbac", "rate_limit", "audit", "custom", "temporal"]
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+          "maxLength": 63,
+          "description": "Unique identifier for the intent graph"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Human-readable description"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "Semantic version"
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Creator identifier"
+        },
+        "created": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+          "description": "Creation timestamp in ISO 8601 format"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "maxItems": 20,
+          "description": "Classification tags"
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["nodes"],
+      "additionalProperties": false,
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/node"
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/edge"
+          },
+          "maxItems": 500
+        },
+        "guards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/guard"
+          },
+          "maxItems": 50
+        },
+        "config": {
+          "$ref": "#/definitions/config"
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "properties"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Unique node identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["action", "decision", "data"],
+          "description": "Node type classification"
+        },
+        "properties": {
+          "$ref": "#/definitions/nodeProperties"
+        },
+        "metadata": {
+          "$ref": "#/definitions/nodeMetadata"
+        }
+      }
+    },
+    "nodeProperties": {
+      "type": "object",
+      "required": ["name", "handler"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "handler": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*\\.[a-zA-Z][a-zA-Z0-9_]*$"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/parameter"
+          },
+          "maxItems": 20
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/condition"
+          },
+          "minItems": 1
+        },
+        "output": {
+          "$ref": "#/definitions/outputSpec"
+        }
+      }
+    },
+    "parameter": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean", "array", "object"]
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "items": {
+          "$ref": "#/definitions/typeSpec"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/typeSpec"
+          }
+        },
+        "default": {},
+        "example": {}
+      }
+    },
+    "typeSpec": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean", "array", "object"]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "default": {},
+        "items": {
+          "$ref": "#/definitions/typeSpec"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/typeSpec"
+          }
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "required": ["field", "operator"],
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "operator": {
+          "type": "string",
+          "enum": ["equals", "not_equals", "greater_than", "less_than", "in", "contains", "within_hours"]
+        },
+        "value": {},
+        "output": {
+          "type": "string"
+        }
+      }
+    },
+    "outputSpec": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "type": {
+            "const": "array"
+          }
+        }
+      },
+      "then": {
+        "required": ["items"]
+      },
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean", "array", "object"]
+        },
+        "items": {
+          "$ref": "#/definitions/typeSpec"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/typeSpec"
+          }
+        }
+      }
+    },
+    "nodeMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "estimated_duration": {
+          "type": "string",
+          "pattern": "^[0-9]+[smh]$"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"]
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "from", "to", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["sequence", "conditional"]
+        },
+        "properties": {
+          "$ref": "#/definitions/edgeProperties"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/edgeCondition"
+          }
+        },
+        "data_mapping": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dataMapping"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "edgeProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "edgeCondition": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/condition"
+        },
+        {
+          "type": "object",
+          "required": ["logic", "rules"],
+          "additionalProperties": false,
+          "properties": {
+            "logic": {
+              "type": "string",
+              "enum": ["AND", "OR", "NOT"]
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/condition"
+              },
+              "minItems": 1
+            }
+          }
+        }
+      ]
+    },
+    "dataMapping": {
+      "type": "object",
+      "required": ["source", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        }
+      }
+    },
+    "guard": {
+      "type": "object",
+      "required": ["name", "type", "apply_to"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["rbac", "rate_limit", "audit", "custom", "temporal"]
+        },
+        "description": {
+          "type": "string"
+        },
+        "apply_to": {
+          "$ref": "#/definitions/guardApplyTo"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "guardApplyTo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^([a-z0-9_]+|[a-z0-9_]+->[a-z0-9_]+)$"
+          }
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "retry": {
+          "$ref": "#/definitions/retryConfig"
+        },
+        "concurrency": {
+          "$ref": "#/definitions/concurrencyConfig"
+        }
+      }
+    },
+    "retryConfig": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "backoffMultiplier": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10
+        }
+      }
+    },
+    "concurrencyConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxParallel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    }
+  }
+} 

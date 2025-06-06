@@ -1,0 +1,483 @@
+# Complete Payroll Workflow Example
+# This example demonstrates a comprehensive payroll processing intent graph
+# using all major schema features: nodes, edges, guards, and configuration
+
+apiVersion: intentive.dev/v1
+kind: IntentGraph
+metadata:
+  name: payroll-workflow
+  description: "Complete payroll processing workflow with authentication, approval, calculation, and processing"
+  version: "1.0.0"
+  author: "intentive-team"
+  created: "2024-01-01T00:00:00Z"
+  tags: ["payroll", "finance", "workflow", "example"]
+
+spec:
+  nodes:
+    # Authentication node - entry point
+    - id: "authenticate_user"
+      type: "action"
+      properties:
+        name: "Authenticate User"
+        description: "Verify user credentials and role-based permissions for payroll access"
+        handler: "auth.authenticate"
+        parameters:
+          - name: "user_id"
+            type: "string"
+            required: true
+            description: "Unique user identifier"
+            pattern: "^[a-zA-Z0-9_]+$"
+            example: "john_doe"
+          - name: "session_token"
+            type: "string"
+            required: true
+            description: "Session authentication token"
+            pattern: "^[A-Za-z0-9+/=]+$"
+          - name: "require_mfa"
+            type: "boolean"
+            required: false
+            description: "Whether multi-factor authentication is required"
+            default: true
+      metadata:
+        tags: ["authentication", "security", "entry-point"]
+        estimated_duration: "2s"
+        priority: "critical"
+    
+    # Approval status verification
+    - id: "check_approval_status"
+      type: "decision"
+      properties:
+        name: "Check Payroll Approval Status"
+        description: "Verify if current payroll period has been approved by authorized managers"
+        handler: "approval.check_status"
+        parameters:
+          - name: "pay_period"
+            type: "string"
+            required: true
+            description: "Payroll period in YYYY-MM format"
+            pattern: "^[0-9]{4}-[0-9]{2}$"
+            example: "2024-01"
+          - name: "approval_type"
+            type: "string"
+            required: false
+            description: "Type of approval required"
+            default: "standard"
+            pattern: "^(standard|emergency|adjustment)$"
+        conditions:
+          - field: "approval.status"
+            operator: "equals"
+            value: "approved"
+            output: "approved"
+          - field: "approval.status"
+            operator: "equals" 
+            value: "pending"
+            output: "pending"
+          - field: "approval.status"
+            operator: "equals"
+            value: "rejected"
+            output: "rejected"
+      metadata:
+        tags: ["approval", "governance", "decision"]
+        estimated_duration: "1s"
+        priority: "high"
+    
+    # Employee data retrieval
+    - id: "fetch_employee_data"
+      type: "data"
+      properties:
+        name: "Fetch Employee Data"
+        description: "Retrieve current employee information including salary, hours, and deductions"
+        handler: "employee.fetch_data"
+        parameters:
+          - name: "pay_period"
+            type: "string"
+            required: true
+            description: "Target payroll period"
+            pattern: "^[0-9]{4}-[0-9]{2}$"
+          - name: "employee_filter"
+            type: "object"
+            required: false
+            description: "Optional filters for employee selection"
+            properties:
+              department:
+                type: "string"
+                required: false
+              location:
+                type: "string"
+                required: false
+              employee_ids:
+                type: "array"
+                required: false
+            default: {}
+        output:
+          type: "object"
+          properties:
+            employees:
+              type: "array"
+            total_count:
+              type: "number"
+      metadata:
+        tags: ["data", "employee", "retrieval"]
+        estimated_duration: "5s"
+        priority: "medium"
+    
+    # Payroll calculations
+    - id: "calculate_payroll"
+      type: "data"
+      properties:
+        name: "Calculate Payroll Totals"
+        description: "Compute gross pay, taxes, deductions, and net pay for all employees"
+        handler: "payroll.calculate"
+        parameters:
+          - name: "employee_data"
+            type: "array"
+            required: true
+            description: "Employee data including hours and rates"
+          - name: "tax_rates"
+            type: "object"
+            required: true
+            description: "Current tax rates and jurisdiction settings"
+            properties:
+              federal_rate:
+                type: "number"
+                required: true
+                minimum: 0
+                maximum: 1
+              state_rate:
+                type: "number"
+                required: true
+                minimum: 0
+                maximum: 1
+              local_rate:
+                type: "number"
+                required: false
+                minimum: 0
+                maximum: 1
+                default: 0
+          - name: "include_benefits"
+            type: "boolean"
+            required: false
+            description: "Whether to include benefit deductions"
+            default: true
+        output:
+          type: "object"
+          properties:
+            total_gross:
+              type: "number"
+            total_taxes:
+              type: "number"
+            total_deductions:
+              type: "number"
+            total_net:
+              type: "number"
+            employee_details:
+              type: "array"
+      metadata:
+        tags: ["calculation", "payroll", "finance"]
+        estimated_duration: "10s"
+        priority: "high"
+    
+    # Final processing and payment generation
+    - id: "process_payments"
+      type: "action"
+      properties:
+        name: "Process Payroll Payments"
+        description: "Generate payment instructions and initiate transfers to employee accounts"
+        handler: "payment.process"
+        parameters:
+          - name: "payroll_calculations"
+            type: "object"
+            required: true
+            description: "Calculated payroll data from previous step"
+          - name: "payment_method"
+            type: "string"
+            required: false
+            description: "Default payment method"
+            default: "direct_deposit"
+            pattern: "^(direct_deposit|check|card)$"
+          - name: "dry_run"
+            type: "boolean"
+            required: false
+            description: "Preview mode without actual payment processing"
+            default: false
+          - name: "batch_size"
+            type: "number"
+            required: false
+            description: "Number of payments to process in each batch"
+            default: 100
+            minimum: 1
+            maximum: 1000
+      metadata:
+        tags: ["payment", "processing", "financial"]
+        estimated_duration: "30s"
+        priority: "critical"
+  
+  edges:
+    # Sequential flow: Authentication -> Approval Check
+    - id: "auth_to_approval"
+      from: "authenticate_user"
+      to: "check_approval_status"
+      type: "sequence"
+      properties:
+        name: "Authentication to Approval Check"
+        description: "Proceed to approval verification after successful authentication"
+      conditions:
+        - field: "auth.result"
+          operator: "equals"
+          value: "success"
+        - field: "user.role"
+          operator: "in"
+          value: ["payroll_admin", "finance_manager", "hr_manager"]
+      metadata:
+        priority: "high"
+        description: "Only authenticated users with proper roles can proceed"
+    
+    # Conditional flow: Approval -> Data Fetch (only if approved)
+    - id: "approval_to_fetch"
+      from: "check_approval_status"
+      to: "fetch_employee_data"
+      type: "conditional"
+      properties:
+        name: "Approved to Data Fetch"
+        description: "Fetch employee data only after payroll approval"
+      conditions:
+        - logic: "AND"
+          rules:
+            - field: "approval.status"
+              operator: "equals"
+              value: "approved"
+            - field: "approval.timestamp"
+              operator: "within_hours"
+              value: 72
+      metadata:
+        condition_description: "Payroll approved within last 72 hours"
+        priority: "high"
+    
+    # Sequential flow: Data Fetch -> Calculation
+    - id: "fetch_to_calculate"
+      from: "fetch_employee_data"
+      to: "calculate_payroll"
+      type: "sequence"
+      properties:
+        name: "Data Fetch to Calculation"
+        description: "Calculate payroll after retrieving employee data"
+      data_mapping:
+        - source: "employee_data.employees"
+          target: "payroll_calc.employee_data"
+        - source: "system.tax_rates"
+          target: "payroll_calc.tax_rates"
+      metadata:
+        description: "Automatic progression with data mapping"
+    
+    # Conditional flow: Calculation -> Processing (with validation)
+    - id: "calculate_to_process"
+      from: "calculate_payroll"
+      to: "process_payments"
+      type: "conditional"
+      properties:
+        name: "Calculation to Payment Processing"
+        description: "Process payments after successful calculation and validation"
+      conditions:
+        - logic: "AND"
+          rules:
+            - field: "calculations.total_net"
+              operator: "greater_than"
+              value: 0
+            - field: "calculations.errors"
+              operator: "equals"
+              value: 0
+            - field: "validation.passed"
+              operator: "equals"
+              value: true
+      data_mapping:
+        - source: "calculations"
+          target: "payment.payroll_calculations"
+      metadata:
+        condition_description: "Process only if calculations are valid and error-free"
+        priority: "critical"
+    
+    # Error handling: Rejection flow
+    - id: "approval_rejected"
+      from: "check_approval_status"
+      to: "authenticate_user"
+      type: "sequence"
+      properties:
+        name: "Approval Rejected Flow"
+        description: "Return to authentication when approval is rejected for retry"
+      conditions:
+        - field: "approval.status"
+          operator: "equals"
+          value: "rejected"
+      data_mapping:
+        - source: "approval.rejection_reason"
+          target: "auth.error_message"
+        - source: "approval.retry_allowed"
+          target: "auth.allow_retry"
+      metadata:
+        is_error_path: true
+        description: "Error handling path for rejected approvals"
+  
+  guards:
+    # RBAC guard for sensitive operations
+    - name: "payroll_rbac"
+      type: "rbac"
+      description: "Role-based access control for all payroll operations"
+      apply_to:
+        nodes: ["authenticate_user", "check_approval_status", "calculate_payroll", "process_payments"]
+        edges: ["auth_to_approval", "calculate_to_process"]
+      config:
+        required_roles: ["payroll_admin", "finance_manager"]
+        required_permissions: ["payroll:read", "payroll:write", "finance:calculate"]
+        check_mode: "strict"
+        failure_action: "block"
+        role_hierarchy:
+          payroll_admin: ["payroll:read", "payroll:write"]
+          finance_manager: ["payroll:read", "payroll:write", "finance:calculate", "finance:approve"]
+          hr_manager: ["payroll:read"]
+      metadata:
+        priority: "critical"
+        compliance: ["SOX", "PCI-DSS"]
+        description: "Ensures only authorized personnel can access payroll functions"
+    
+    # Rate limiting for payment processing
+    - name: "payment_rate_limit"
+      type: "rate_limit"
+      description: "Prevent excessive payment processing to avoid system overload"
+      apply_to:
+        nodes: ["process_payments"]
+      config:
+        max_requests: 3
+        time_window: "1h"
+        per_user: true
+        burst_allowance: 1
+        failure_action: "delay"
+        backoff_strategy: "exponential"
+        max_delay: "5m"
+      metadata:
+        priority: "medium"
+        description: "Limits payment processing to 3 attempts per hour per user"
+    
+    # Comprehensive audit logging
+    - name: "financial_audit"
+      type: "audit"
+      description: "Complete audit trail for all financial operations"
+      apply_to:
+        nodes: ["calculate_payroll", "process_payments", "check_approval_status"]
+        edges: ["approval_to_fetch", "calculate_to_process"]
+      config:
+        log_level: "info"
+        include_parameters: true
+        include_results: false  # Sensitive financial data excluded
+        sensitive_fields: ["ssn", "bank_account", "salary"]
+        retention_days: 2555  # 7 years
+        destinations: ["audit_db", "compliance_system", "siem"]
+        encrypt_logs: true
+        compression: "gzip"
+      metadata:
+        priority: "critical"
+        compliance: ["SOX", "GDPR", "HIPAA"]
+        description: "Maintains comprehensive audit trail for regulatory compliance"
+    
+    # Business hours restriction
+    - name: "business_hours_only"
+      type: "temporal"
+      description: "Restrict payroll processing to business hours for security"
+      apply_to:
+        nodes: ["process_payments"]
+      config:
+        allowed_days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        allowed_hours:
+          start: "08:00"
+          end: "17:00"
+        timezone: "America/New_York"
+        exceptions:
+          - date: "2024-12-31"  # Year-end processing
+            hours:
+              start: "00:00"
+              end: "23:59"
+          - date_range:
+              start: "2024-12-25"
+              end: "2024-12-26"
+            allowed: false  # No processing during holidays
+        failure_action: "block"
+      metadata:
+        priority: "medium"
+        description: "Ensures payment processing only during secure business hours"
+    
+    # Custom business rule validation
+    - name: "payroll_business_rules"
+      type: "custom"
+      description: "Enforce company-specific payroll validation rules"
+      apply_to:
+        nodes: ["calculate_payroll", "process_payments"]
+      config:
+        handler: "payroll.validate_business_rules"
+        rules:
+          - name: "minimum_wage_compliance"
+            expression: "employee.hourly_rate >= jurisdiction.minimum_wage"
+            message: "Hourly rate must meet minimum wage requirements"
+            severity: "error"
+          - name: "overtime_limits"
+            expression: "employee.overtime_hours <= 80"
+            message: "Overtime hours cannot exceed 80 per pay period"
+            severity: "warning"
+          - name: "salary_cap_check"
+            expression: "employee.annual_salary <= company.salary_cap"
+            message: "Salary exceeds company maximum"
+            severity: "warning"
+          - name: "tax_calculation_accuracy"
+            expression: "abs(calculated_tax - expected_tax) < 0.01"
+            message: "Tax calculation variance exceeds acceptable threshold"
+            severity: "error"
+        failure_action: "block"
+        warning_action: "log"
+      metadata:
+        priority: "high"
+        description: "Validates business rules and compliance requirements"
+  
+  config:
+    # Execution timeouts
+    timeout: 600  # 10 minutes total
+    
+    # Retry configuration
+    retry:
+      maxAttempts: 3
+      backoffMultiplier: 2
+      retry_on_errors: ["network_timeout", "temporary_failure"]
+      no_retry_errors: ["authentication_failed", "permission_denied"]
+    
+    # Concurrency limits
+    concurrency:
+      maxParallel: 3  # Conservative for financial operations
+      
+    # Notification settings
+    notifications:
+      on_success:
+        - type: "email"
+          recipients: ["payroll@company.com", "finance@company.com"]
+          template: "payroll_success"
+        - type: "slack"
+          channel: "#payroll-alerts"
+          message: "Payroll processing completed successfully for period {pay_period}"
+      
+      on_failure:
+        - type: "email"
+          recipients: ["payroll@company.com", "it-alerts@company.com"]
+          template: "payroll_failure"
+          priority: "high"
+        - type: "pager"
+          service: "payroll_oncall"
+          escalation_policy: "financial_critical"
+    
+    # Environment-specific settings
+    environment_overrides:
+      production:
+        timeout: 1800  # 30 minutes in production
+        concurrency:
+          maxParallel: 1  # Single-threaded in production for safety
+      staging:
+        config:
+          dry_run: true  # Always dry run in staging
+      development:
+        guards:
+          disable: ["business_hours_only", "payment_rate_limit"]  # Relaxed rules for dev 
