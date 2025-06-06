@@ -38,8 +38,6 @@ export class JwtVerifier {
     try {
       // Performance guardrail with polyfill support
       return await als.run(new Map(), async () => {
-        const verificationKey = await this.getVerificationKey();
-        
         // Handle different key types for jwtVerify
         if (this.jwks) {
           const { payload } = await jwtVerify(token, this.jwks, {
@@ -48,6 +46,7 @@ export class JwtVerifier {
           });
           return this.extractClaims(payload);
         } else {
+          const verificationKey = await this.getVerificationKey();
           const { payload } = await jwtVerify(token, verificationKey as CryptoKey | Uint8Array, {
             algorithms: this.config.algorithms,
             clockTolerance: this.config.clockSkewSeconds

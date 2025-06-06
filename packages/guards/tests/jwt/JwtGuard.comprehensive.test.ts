@@ -154,8 +154,11 @@ describe('JwtGuard - Comprehensive Algorithm Tests', () => {
     });
 
     it('should verify RS256 token with JWKS URI', async () => {
-      const mockJwks = jest.fn() as any;
+      // Setup proper JWKS mock that matches jose expectations
+      const mockJwks = jest.fn();
       mockCreateRemoteJWKSet.mockReturnValue(mockJwks);
+      
+      // Mock jwtVerify to succeed when called with JWKS
       mockJwtVerify.mockResolvedValue({
         payload: {
           sub: 'user-789',
