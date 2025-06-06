@@ -1,7 +1,26 @@
 # Intentive
 
-> **Natural-language → intent graph → guarded execution.**  
-> Ask for the outcome you want; Intentive maps it to secure GraphQL / workflow calls with built-in RBAC, rate limits, and audit trails.
+> **🚀 From idea to execution in 15 minutes**  
+> Natural-language → intent graph → guarded execution with built-in RBAC, rate limits, and audit trails.
+
+[![Documentation](https://img.shields.io/website.svg?url=https://intentive.dev/docs/getting-started&label=docs)](https://intentive.dev/docs)
+[![Tests](https://github.com/agenticaivc/intentive/workflows/CI/badge.svg)](https://github.com/agenticaivc/intentive/actions)
+
+## ⚡ Try It Now (Any Shell)
+
+**Bash/Zsh:**
+```bash
+curl -fsSL https://get.pnpm.io/install.sh | sh - && git clone https://github.com/agenticaivc/intentive.git && cd intentive && pnpm i && pnpm payroll:demo
+```
+
+**PowerShell:**
+```powershell
+irm https://get.pnpm.io/install.ps1 | iex; git clone https://github.com/agenticaivc/intentive.git; cd intentive; pnpm i; pnpm payroll:demo
+```
+
+Expected: **"🎉 Payroll success!"** in ~15 seconds
+
+[📖 Full Getting Started Guide →](https://intentive.dev/docs/)
 
 ---
 
@@ -20,13 +39,13 @@
 ```bash
 # 1. Clone & install
 git clone https://github.com/agenticaivc/intentive.git
-cd intentive && npm ci
+cd intentive && pnpm ci
 
 # 2. Run schema tests
 npm run schema:test      # validates YAML examples
 
 # 3. Try the payroll example
-cat docs/examples/payroll-graph.yaml  # view the complete payroll workflow
+pnpm payroll:demo  # executes real workflow
 
 # 4. Start the gateway
 npm run gateway:dev
@@ -45,6 +64,7 @@ curl -X POST http://localhost:4000/intent \
 ---
 
 ## 📜 Documentation
+* **Getting Started** – [intentive.dev/docs](https://intentive.dev/docs)
 * **Schema guide** – `docs/concepts/yaml-schema-guide.md`  
 * **Guard ABI** – `docs/concepts/guard-abi.md`  
 * **Architecture** – _placeholder (`docs/architecture.md`)_

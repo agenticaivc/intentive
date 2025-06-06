@@ -1,6 +1,8 @@
 import { jwtVerify, createRemoteJWKSet, importSPKI, type JWTPayload } from 'jose';
 import { JwtConfig, JwtClaims } from './types';
 import { JwtVerificationError } from '../jwt-errors';
+// Import Node.js crypto types for CryptoKey
+import type { webcrypto } from 'crypto';
 
 // AsyncLocalStorage polyfill for non-Node environments
 const als = (globalThis as any).AsyncLocalStorage 
@@ -9,7 +11,7 @@ const als = (globalThis as any).AsyncLocalStorage
 
 export class JwtVerifier {
   private jwks?: ReturnType<typeof createRemoteJWKSet>;
-  private publicKey?: CryptoKey;
+  private publicKey?: webcrypto.CryptoKey;
   private secretKey?: Uint8Array;
 
   constructor(private config: JwtConfig) {}
@@ -47,7 +49,7 @@ export class JwtVerifier {
           return this.extractClaims(payload);
         } else {
           const verificationKey = await this.getVerificationKey();
-          const { payload } = await jwtVerify(token, verificationKey as CryptoKey | Uint8Array, {
+          const { payload } = await jwtVerify(token, verificationKey as webcrypto.CryptoKey | Uint8Array, {
             algorithms: this.config.algorithms,
             clockTolerance: this.config.clockSkewSeconds
           });
@@ -62,7 +64,7 @@ export class JwtVerifier {
     }
   }
 
-  private async getVerificationKey(): Promise<CryptoKey | Uint8Array> {
+  private async getVerificationKey(): Promise<webcrypto.CryptoKey | Uint8Array> {
     if (this.publicKey) return this.publicKey;
     if (this.secretKey) return this.secretKey;
     

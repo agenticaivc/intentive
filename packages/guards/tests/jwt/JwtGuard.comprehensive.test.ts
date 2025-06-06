@@ -1,20 +1,23 @@
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { JwtGuard } from '../../src/jwt';
 import { GuardCtx, GuardInput } from '../../src/GuardABI';
+// Import Node.js crypto types for CryptoKey
+import type { webcrypto } from 'crypto';
 
-// Mock jose library with inline function definitions
+// Mock jose library to avoid ES module issues - same pattern as basic test
 jest.mock('jose', () => ({
   jwtVerify: jest.fn(),
   createRemoteJWKSet: jest.fn(),
   importSPKI: jest.fn()
 }));
 
-// Import the mocked functions after mocking
+// Import jose after mocking
 import { jwtVerify, createRemoteJWKSet, importSPKI } from 'jose';
 
-// Use any casting for all mocks to avoid strict type checking in tests
-const mockJwtVerify = jwtVerify as any;
-const mockCreateRemoteJWKSet = createRemoteJWKSet as any;
-const mockImportSPKI = importSPKI as any;
+// Type the mocks properly
+const mockJwtVerify = jwtVerify as jest.MockedFunction<typeof jwtVerify>;
+const mockCreateRemoteJWKSet = createRemoteJWKSet as jest.MockedFunction<typeof createRemoteJWKSet>;
+const mockImportSPKI = importSPKI as jest.MockedFunction<typeof importSPKI>;
 
 describe('JwtGuard - Comprehensive Algorithm Tests', () => {
   let mockContext: GuardCtx;
@@ -121,7 +124,7 @@ describe('JwtGuard - Comprehensive Algorithm Tests', () => {
 
   describe('RS256 Algorithm Tests', () => {
     it('should verify RS256 token with public key', async () => {
-      const mockCryptoKey = {} as CryptoKey;
+      const mockCryptoKey = {} as webcrypto.CryptoKey;
       mockImportSPKI.mockResolvedValue(mockCryptoKey);
       mockJwtVerify.mockResolvedValue({
         payload: {
@@ -155,8 +158,16 @@ describe('JwtGuard - Comprehensive Algorithm Tests', () => {
 
     it('should verify RS256 token with JWKS URI', async () => {
       // Setup proper JWKS mock that matches jose expectations
-      const mockJwks = jest.fn();
-      mockCreateRemoteJWKSet.mockReturnValue(mockJwks);
+      const mockJwks = {
+        coolingDown: false,
+        fresh: true,
+        reloading: false,
+        reload: jest.fn(),
+        jwks: () => ({ keys: [] }),
+        // Mock the function call interface that jwtVerify expects
+        ...jest.fn()
+      };
+      mockCreateRemoteJWKSet.mockReturnValue(mockJwks as any);
       
       // Mock jwtVerify to succeed when called with JWKS
       mockJwtVerify.mockResolvedValue({
@@ -195,7 +206,7 @@ describe('JwtGuard - Comprehensive Algorithm Tests', () => {
 
   describe('PS256 Algorithm Tests', () => {
     it('should support PS256 algorithm with public key', async () => {
-      const mockCryptoKey = {} as CryptoKey;
+      const mockCryptoKey = {} as webcrypto.CryptoKey;
       mockImportSPKI.mockResolvedValue(mockCryptoKey);
       mockJwtVerify.mockResolvedValue({
         payload: {
@@ -278,8 +289,9 @@ describe('JwtGuard - Comprehensive Algorithm Tests', () => {
         payload: {
           sub: 'user-custom',
           authorities: ['ROLE_ADMIN', 'ROLE_USER'] // Custom claim name
-        }
-      });
+        },
+        protectedHeader: { alg: 'HS256' }
+      } as any);
 
       const guard = new JwtGuard({
         algorithms: ['HS256'],
@@ -303,8 +315,9 @@ describe('JwtGuard - Comprehensive Algorithm Tests', () => {
         payload: {
           sub: 'user-scope',
           scope: 'read write admin'
-        }
-      });
+        },
+        protectedHeader: { alg: 'HS256' }
+      } as any);
 
       const guard = new JwtGuard({
         algorithms: ['HS256'],
@@ -326,8 +339,9 @@ describe('JwtGuard - Comprehensive Algorithm Tests', () => {
   describe('Multi-Source Token Extraction Tests', () => {
     it('should extract token from Bearer header', async () => {
       mockJwtVerify.mockResolvedValue({
-        payload: { sub: 'user-bearer', roles: ['user'] }
-      });
+        payload: { sub: 'user-bearer', roles: ['user'] },
+        protectedHeader: { alg: 'HS256' }
+      } as any);
 
       const guard = new JwtGuard({
         algorithms: ['HS256'],
@@ -347,8 +361,9 @@ describe('JwtGuard - Comprehensive Algorithm Tests', () => {
 
     it('should extract token from direct jwt parameter', async () => {
       mockJwtVerify.mockResolvedValue({
-        payload: { sub: 'user-direct', roles: ['user'] }
-      });
+        payload: { sub: 'user-direct', roles: ['user'] },
+        protectedHeader: { alg: 'HS256' }
+      } as any);
 
       const guard = new JwtGuard({
         algorithms: ['HS256'],
@@ -368,8 +383,9 @@ describe('JwtGuard - Comprehensive Algorithm Tests', () => {
 
     it('should prioritize Authorization header over direct jwt parameter', async () => {
       mockJwtVerify.mockResolvedValue({
-        payload: { sub: 'user-priority', roles: ['user'] }
-      });
+        payload: { sub: 'user-priority', roles: ['user'] },
+        protectedHeader: { alg: 'HS256' }
+      } as any);
 
       const guard = new JwtGuard({
         algorithms: ['HS256'],

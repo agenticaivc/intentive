@@ -31,7 +31,12 @@
     "schema:example": "ajv validate -s docs/schemas/intent-graph-schema.json -d docs/examples/intent-graph-examples.yaml",
     "prettier:fix": "prettier --write docs/**/*.{md,yaml,json}",
     "tsc:check": "npx tsc --project tsconfig.json --noEmit --skipLibCheck",
-    "guard:interfaces": "node scripts/check-guard-interfaces.js"
+    "guard:interfaces": "node scripts/check-guard-interfaces.js",
+    "docs:start": "pnpm --filter docs-website start",
+    "docs:build": "pnpm --filter docs-website build",
+    "docs:preview": "pnpm --filter docs-website serve",
+    "payroll:demo": "tsx scripts/payroll-demo.ts",
+    "docs:timer": "vitest run --config packages/tests/docsTimer.test.config.ts"
   },
   "keywords": [
     "workflow",
@@ -52,7 +57,8 @@
     "ts-morph": "^21.0.1",
     "typescript": "^5.8.3",
     "vitest": "^1.0.0",
-    "yaml": "^2.3.4"
+    "yaml": "^2.3.4",
+    "tsx": "^4.7.0"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -63,5 +69,6 @@
     "jose": "^6.0.11",
     "js-yaml": "^4.1.0",
     "zod": "^3.25.53"
-  }
+  },
+  "packageManager": "pnpm@8.15.9+sha512.499434c9d8fdd1a2794ebf4552b3b25c0a633abcee5bb15e7b5de90f32f47b513aca98cd5cfd001c31f0db454bc3804edccd578501e4ca293a6816166bbd9f81"
 }

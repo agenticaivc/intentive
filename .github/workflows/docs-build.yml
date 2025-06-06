@@ -1,0 +1,100 @@
+name: Documentation Build & Test
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'docs/**', 'packages/docs-website/**', 'README.md' ]
+  pull_request:
+    paths: [ 'docs/**', 'packages/docs-website/**', 'README.md' ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          # Improved cache key with Node version
+          cache-dependency-path: pnpm-lock.yaml
+      
+      - name: Install pnpm (deterministic)
+        run: |
+          corepack enable
+          corepack prepare pnpm@8 --activate
+        
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Generate package-lock.json for dependabot
+        run: node scripts/generate-package-lock.cjs
+        
+      - name: Build executor package
+        run: pnpm --filter @intentive/executor build
+        
+      - name: Test payroll demo
+        run: pnpm payroll:demo
+        
+      - name: Build documentation
+        run: pnpm docs:build
+        
+      - name: Enhanced link checking with lychee
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: --no-progress --exclude-mail './packages/docs-website/docs/**/*.md' './README.md'
+          fail: true
+          format: json
+          output: lychee-results.json
+          
+      - name: All-routes accessibility testing
+        run: |
+          pnpm docs:preview --port 3001 &
+          sleep 10
+          # Test key pages for accessibility
+          npx pa11y http://localhost:3001/getting-started --threshold 5
+          npx pa11y http://localhost:3001/api --threshold 5
+          npx pa11y http://localhost:3001/troubleshooting --threshold 5
+          
+      - name: Lighthouse CI with budgets
+        run: |
+          # Use custom port to avoid conflicts
+          sed -i 's/localhost:3000/localhost:3001/g' .lighthouseci.json
+          npx @lhci/cli@0.12.x autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+  docker-timer-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: 15-minute guarantee test (deterministic)
+        run: |
+          docker run --rm -v $PWD:/workspace -w /workspace node:20-slim bash -c "
+            set -e
+            echo '🕐 Starting fresh machine test...'
+            start_time=\$(date +%s)
+            
+            # Deterministic pnpm install (no curl)
+            corepack enable
+            corepack prepare pnpm@8 --activate
+            
+            # Run demo
+            pnpm install --frozen-lockfile
+            pnpm --filter @intentive/executor build
+            timeout 900s pnpm payroll:demo
+            
+            end_time=\$(date +%s)
+            duration=\$((end_time - start_time))
+            echo \"⏱️  Total time: \${duration}s\"
+            
+            if [ \$duration -gt 900 ]; then
+              echo '❌ Test failed: exceeded 15 minutes'
+              exit 1
+            fi
+            
+            echo '✅ 15-minute guarantee: PASSED'
+          " 

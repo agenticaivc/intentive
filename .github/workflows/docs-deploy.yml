@@ -1,0 +1,39 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'docs/**', 'packages/docs-website/**' ]
+  workflow_run:
+    workflows: ["Documentation Build & Test"]
+    types: [ completed ]
+    branches: [ main ]
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache-dependency-path: pnpm-lock.yaml
+          
+      - name: Install pnpm  
+        run: |
+          corepack enable
+          corepack prepare pnpm@8 --activate
+        
+      - name: Install and build
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm docs:build
+          
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./packages/docs-website/build
+          destination_dir: docs
+          cname: intentive.dev 

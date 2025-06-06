@@ -212,11 +212,14 @@ export class GraphQLFallback {
 
     const json = await response.json();
     
-    if (json.errors && json.errors.length > 0) {
-      throw new Error(`GraphQL errors: ${json.errors.map((e: any) => e.message).join(', ')}`);
+    // Type assertion since we know this follows GraphQLResponse interface
+    const graphqlResponse = json as GraphQLResponse;
+    
+    if (graphqlResponse.errors && graphqlResponse.errors.length > 0) {
+      throw new Error(`GraphQL errors: ${graphqlResponse.errors.map((e: any) => e.message).join(', ')}`);
     }
     
-    return json as GraphQLResponse;
+    return graphqlResponse;
   }
 
   private normalizeResponse(

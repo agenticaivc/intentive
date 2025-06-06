@@ -1,3 +1,6 @@
+// Setup required environment variables before imports
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-api-key';
+
 import { build } from '../src/index';
 import { isUUID } from 'validator';
 import { FastifyInstance } from 'fastify';
