@@ -1,30 +1,40 @@
 {
   "name": "@intentive/executor",
   "version": "0.1.0",
-  "description": "Intentive graph execution engine",
+  "description": "Intentive Graph Execution Engine - v0.1 Implementation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "intentive-exec": "dist/cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "test": "jest",
     "test:watch": "jest --watch",
-    "dev": "tsc --watch"
+    "clean": "rm -rf dist/",
+    "dev": "tsc --watch",
+    "exec": "node dist/cli.js"
   },
   "keywords": [
-    "intentive",
-    "executor",
-    "graph",
+    "intentive", 
+    "execution-engine", 
+    "graph", 
     "workflow"
   ],
-  "peerDependencies": {
-    "typescript": "^5.8.3"
-  },
+  "author": "Intentive Team",
+  "license": "MIT",
   "devDependencies": {
-    "@types/jest": "^29.5.14",
+    "@types/jest": "^29.5.5",
+    "@types/node": "^20.6.0",
     "jest": "^29.7.0",
-    "ts-jest": "^29.3.4"
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
   },
-  "engines": {
-    "node": ">=18.0.0"
-  }
+  "dependencies": {
+    "yaml": "^2.3.4"
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ]
 } 

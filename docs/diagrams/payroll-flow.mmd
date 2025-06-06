@@ -1,0 +1,63 @@
+sequenceDiagram
+    participant User
+    participant Executor
+    participant RBAC as RBAC Guard
+    participant Auth as authenticate_user
+    participant Approval as check_approval_status
+    participant Data as fetch_employee_data
+    participant Calc as calculate_payroll
+    participant Rate as Rate Limit Guard
+    participant Pay as process_payments
+
+    User->>Executor: "Process payroll for December 2024"
+    Note over User,Executor: user: {id: "finance_user_001", roles: ["finance_manager"]}
+    
+    Executor->>Auth: Initialize node (PENDING → READY)
+    Auth->>RBAC: Validate user permissions
+    
+    alt Authorized User (finance_manager)
+        RBAC-->>Auth: status: "success"
+        Note over RBAC: Required roles: ["payroll_admin", "finance_manager"]
+        Auth->>Auth: Execute handler (READY → RUNNING)
+        Auth-->>Executor: Authentication successful (RUNNING → COMPLETE)
+        
+        Executor->>Approval: Check dependencies met (PENDING → READY)
+        Approval->>Approval: Execute approval check (READY → RUNNING)
+        Approval-->>Executor: approval.status = "approved" (RUNNING → COMPLETE)
+        
+        Note over Executor,Data: Conditional edge: approval.status == "approved"
+        Executor->>Data: Condition satisfied (PENDING → READY)
+        Data->>Data: Fetch employee records (READY → RUNNING)
+        Data-->>Executor: Employee data retrieved (RUNNING → COMPLETE)
+        
+        Executor->>Calc: Process calculation (PENDING → READY → RUNNING)
+        Calc-->>Executor: Payroll calculated (RUNNING → COMPLETE)
+        
+        Executor->>Pay: Initialize payment (PENDING → READY)
+        Pay->>Rate: Check rate limits
+        
+        alt Under Rate Limit (< 3 requests/hour)
+            Rate-->>Pay: status: "success" 
+            Pay->>Pay: Execute ACH transfers (READY → RUNNING)
+            Pay-->>Executor: Payments processed (RUNNING → COMPLETE)
+            Executor-->>User: SUCCESS - Payroll completed
+            
+        else Rate Limit Exceeded (≥ 3 requests/hour)
+            Rate-->>Pay: status: "delay", retryAfterMs: 1800000
+            Pay-->>Executor: Payment delayed (READY → FAILED)
+            Executor-->>User: DELAYED - Retry in 30 minutes
+        end
+        
+    else Unauthorized User (sales_rep)
+        RBAC-->>Auth: status: "block"
+        Note over RBAC: User lacks required roles
+        Auth-->>Executor: RBAC blocked (READY → FAILED)
+        
+        Note over Executor: Mark downstream nodes as SKIPPED
+        Executor->>Approval: Mark SKIPPED
+        Executor->>Data: Mark SKIPPED
+        Executor->>Calc: Mark SKIPPED
+        Executor->>Pay: Mark SKIPPED
+        
+        Executor-->>User: FAILED - Access denied
+    end 

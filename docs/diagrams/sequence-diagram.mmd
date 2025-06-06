@@ -1,0 +1,96 @@
+sequenceDiagram
+    participant Client
+    participant Executor
+    participant TopologicalSorter
+    participant ExecutionState
+    participant NodeLifecycle
+    participant ConcurrencyManager
+    participant NodeHandler
+
+    Client->>Executor: executeGraph(graph)
+    
+    Note over Executor: Initialization Phase
+    Executor->>TopologicalSorter: sort(nodes, edges)
+    TopologicalSorter-->>Executor: sortResult
+    
+    alt Graph has cycles
+        Executor-->>Client: Error: Graph contains cycles
+    end
+    
+    Executor->>ExecutionState: initializeNodes()
+    ExecutionState-->>Executor: nodes initialized
+    
+    Executor->>ConcurrencyManager: new(maxParallel)
+    ConcurrencyManager-->>Executor: manager ready
+    
+    Note over Executor: Execution Phase
+    loop Until all nodes complete
+        Executor->>NodeLifecycle: getReadyNodes()
+        NodeLifecycle->>ExecutionState: getNodesInStatus('PENDING')
+        ExecutionState-->>NodeLifecycle: pendingNodes[]
+        
+        loop For each pending node
+            NodeLifecycle->>NodeLifecycle: checkNodeReadiness()
+            alt Node is ready
+                NodeLifecycle->>ExecutionState: updateNodeStatus('READY')
+            end
+        end
+        
+        NodeLifecycle-->>Executor: readyNodes[]
+        
+        loop For each ready node
+            alt Has concurrency capacity
+                Executor->>ConcurrencyManager: hasCapacity()
+                ConcurrencyManager-->>Executor: true
+                
+                Executor->>NodeLifecycle: transitionNode('RUNNING')
+                NodeLifecycle->>ExecutionState: updateNodeStatus('RUNNING')
+                
+                par Node Execution
+                    Executor->>NodeHandler: execute(node)
+                    NodeHandler-->>Executor: output
+                    
+                    Executor->>ExecutionState: setNodeOutput(output)
+                    Executor->>NodeLifecycle: transitionNode('COMPLETE')
+                    NodeLifecycle->>ExecutionState: updateNodeStatus('COMPLETE')
+                and Concurrency Tracking
+                    Executor->>ConcurrencyManager: addRunningNode(promise)
+                    Note over ConcurrencyManager: Track running node
+                end
+                
+            else Capacity exceeded
+                Executor->>ConcurrencyManager: addToWaitingQueue(nodeId)
+            end
+        end
+        
+        alt Nodes are running
+            Executor->>ConcurrencyManager: waitForAnyCompletion()
+            ConcurrencyManager-->>Executor: completedNodeId
+            
+            Executor->>ConcurrencyManager: getNextFromQueue()
+            ConcurrencyManager-->>Executor: nextNodes[]
+        end
+        
+        Executor->>ExecutionState: isExecutionComplete()
+        ExecutionState-->>Executor: boolean
+    end
+    
+    Note over Executor: Cleanup Phase
+    Executor->>ExecutionState: getExecutionSummary()
+    ExecutionState-->>Executor: summary
+    
+    Executor-->>Client: ExecutionResult
+
+    Note over Executor,NodeHandler: Error Handling Flow
+    alt Node execution fails
+        NodeHandler-->>Executor: Error
+        Executor->>NodeLifecycle: transitionNode('FAILED')
+        NodeLifecycle->>ExecutionState: updateNodeStatus('FAILED')
+        Executor->>NodeLifecycle: markDownstreamAsSkipped()
+        
+        loop For each downstream node
+            NodeLifecycle->>ExecutionState: updateNodeStatus('SKIPPED')
+        end
+        
+        Executor-->>Client: ExecutionResult(failed)
+    end 

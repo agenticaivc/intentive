@@ -1,0 +1,32 @@
+flowchart TD
+    A[Ready Nodes Available] --> B{Has Capacity?}
+    B -->|Yes| C[Start Node Execution]
+    B -->|No| D[Add to Waiting Queue]
+    
+    C --> E[Track in Running Slots]
+    E --> F[Node Executing...]
+    
+    F --> G{Execution Complete?}
+    G -->|Success| H[Mark COMPLETE]
+    G -->|Error| I[Mark FAILED]
+    
+    H --> J[Remove from Running Slots]
+    I --> J
+    J --> K[Check Waiting Queue]
+    
+    K --> L{Queue Has Nodes?}
+    L -->|Yes| M[Get Next from Queue]
+    L -->|No| N[Continue Execution Loop]
+    
+    M --> B
+    N --> O{All Nodes Complete?}
+    O -->|No| A
+    O -->|Yes| P[Execution Finished]
+    
+    D --> Q[Wait for Capacity]
+    Q --> K
+    
+    style C fill:#90EE90
+    style H fill:#90EE90
+    style I fill:#FFB6C1
+    style P fill:#87CEEB 

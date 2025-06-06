@@ -66,7 +66,7 @@ describe('Executor', () => {
               type: 'conditional',
               conditions: [
                 {
-                  field: 'approval.status',
+                  field: 'approval',
                   operator: 'equals',
                   value: 'approved'
                 }
@@ -270,7 +270,7 @@ describe('Executor', () => {
               type: 'conditional',
               conditions: [
                 {
-                  field: 'approval.status',
+                  field: 'approval',
                   operator: 'equals',
                   value: 'approved'
                 }

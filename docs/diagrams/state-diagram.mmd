@@ -1,0 +1,46 @@
+stateDiagram-v2
+    [*] --> PENDING: Initialize Node
+    
+    PENDING --> READY: Dependencies Complete
+    PENDING --> SKIPPED: Dependency Failed
+    
+    READY --> RUNNING: Start Execution
+    READY --> SKIPPED: Guard Blocked
+    
+    RUNNING --> COMPLETE: Success
+    RUNNING --> FAILED: Error
+    
+    FAILED --> READY: Retry (future)
+    
+    COMPLETE --> [*]: Terminal
+    SKIPPED --> [*]: Terminal
+    
+    note right of PENDING
+        Waiting for dependencies
+        to complete
+    end note
+    
+    note right of READY
+        All dependencies satisfied,
+        can be scheduled
+    end note
+    
+    note right of RUNNING
+        Currently executing
+        node handler
+    end note
+    
+    note right of COMPLETE
+        Successfully completed
+        with output
+    end note
+    
+    note right of FAILED
+        Execution failed
+        with error
+    end note
+    
+    note right of SKIPPED
+        Bypassed due to failed
+        dependencies or guards
+    end note 

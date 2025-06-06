@@ -1,225 +1,218 @@
 # Payroll Processing Intent Graph - Enhanced Schema Demo
 # Tests all v0.1 schema features: centralized enums, strict validation, conditional rules
 
-apiVersion: intentive.dev/v1
-kind: IntentGraph
+apiVersion: "intentive.dev/v1"
+kind: "IntentGraph"
 metadata:
-  name: payroll-processing
-  description: "Production-ready payroll workflow demonstrating enhanced schema validation"
+  name: "payroll-processing"
+  description: "Complete payroll processing workflow with approval gates, RBAC security, and rate limiting. Domain: Employee payroll with time records, tax calculations, deductions (health insurance, 401k, garnishments), approval workflows, ACH direct deposits, paystub generation, and compliance reporting."
   version: "1.0.0"
-  author: "intentive-schema-team"
-  created: "2025-01-15T10:00:00Z"
-  tags: ["payroll", "finance", "production", "schema-demo"]
+  labels:
+    team: "hr"
+    domain: "finance"
 
 spec:
+  config:
+    concurrency:
+      maxParallel: 2
+    timeout: 300
+    retry:
+      maxAttempts: 2
+      backoffMultiplier: 2
+
   nodes:
-    # Action node - Authentication with MFA
     - id: "authenticate_user"
       type: "action"
       properties:
-        name: "Authenticate Payroll User"
-        description: "Multi-factor authentication for payroll system access"
-        handler: "auth.authenticate_mfa"
-        parameters:
-          - name: "user_id"
-            type: "string"
-            required: true
-            description: "Employee ID or username"
-            pattern: "^[a-zA-Z0-9_]{3,20}$"
-          - name: "mfa_token"
-            type: "string"
-            required: true
-            description: "6-digit time-based token"
-            pattern: "^[0-9]{6}$"
-        output:
-          type: "object"
-          properties:
-            session_id:
-              type: "string"
-            user_role:
-              type: "string"
-      metadata:
-        tags: ["authentication", "security", "mfa"]
-        estimated_duration: "3s"
-        priority: "critical"
-
-    # Decision node - Check approval status
-    - id: "verify_payroll_approval"
+        name: "Authenticate User"
+        description: "Verify user identity and check authorization"
+        handler: "auth.authenticate"
+        timeout: 30
+        
+    - id: "check_approval_status"
       type: "decision"
       properties:
-        name: "Verify Payroll Period Approval"
-        description: "Ensure current payroll period has proper managerial approval"
-        handler: "approval.verify_status"
-        parameters:
-          - name: "pay_period"
-            type: "string"
-            required: true
-            description: "Target payroll period in YYYY-MM format"
-            pattern: "^[0-9]{4}-[0-9]{2}$"
-        conditions:
-          - field: "approval.status"
-            operator: "equals"
-            value: "approved"
-            output: "proceed_to_processing"
-          - field: "approval.status"
-            operator: "equals"
-            value: "pending"
-            output: "wait_for_approval"
-          - field: "approval.status"
-            operator: "equals"
-            value: "rejected"
-            output: "escalate_rejection"
-      metadata:
-        tags: ["approval", "governance", "compliance"]
-        estimated_duration: "2s"
-        priority: "high"
-
-    # Data node - Fetch employee information
-    - id: "collect_employee_data"
+        name: "Check Approval Status"
+        description: "Verify payroll run has proper approvals"
+        handler: "approval.check_status"
+        timeout: 15
+    
+    - id: "fetch_employee_data"
       type: "data"
       properties:
-        name: "Collect Employee Payroll Data"
-        description: "Aggregate all employee data needed for payroll calculation"
-        handler: "data.collect_payroll_data"
-        parameters:
-          - name: "pay_period"
-            type: "string"
-            required: true
-            description: "Payroll period for data collection"
-            pattern: "^[0-9]{4}-[0-9]{2}$"
-          - name: "include_departments"
-            type: "array"
-            required: false
-            description: "Specific departments to include"
-            items:
-              type: "string"
-            default: []
-        output:
-          type: "array"
-          items:
-            type: "object"
-      metadata:
-        tags: ["data", "collection", "employees"]
-        estimated_duration: "8s"
-        priority: "medium"
-
-    # Action node - Process payments
-    - id: "execute_payment_processing"
+        name: "Fetch Employee Data"
+        description: "Retrieve employee records from HR system"
+        handler: "data.fetch_employees"
+        timeout: 30
+        retryCount: 2
+    
+    - id: "fetch_time_records"
+      type: "data"
+      properties:
+        name: "Fetch Time Records"
+        description: "Fetch time tracking data for pay period"
+        handler: "data.fetch_time_records"
+        timeout: 45
+        retryCount: 1
+    
+    - id: "calculate_payroll"
       type: "action"
       properties:
-        name: "Execute Payment Processing"
-        description: "Generate payment files and initiate bank transfers"
-        handler: "payments.execute_batch"
-        parameters:
-          - name: "employee_data"
-            type: "array"
-            required: true
-            description: "Employee data from collection step"
-          - name: "dry_run_mode"
-            type: "boolean"
-            required: false
-            description: "Execute in test mode without actual transfers"
-            default: false
-        output:
-          type: "object"
-          properties:
-            total_payments:
-              type: "number"
-            batch_reference:
-              type: "string"
-      metadata:
-        tags: ["payment", "processing", "banking"]
-        estimated_duration: "45s"
-        priority: "critical"
+        name: "Calculate Payroll"
+        description: "Calculate gross pay, deductions, and net pay"
+        handler: "payroll.calculate"
+        timeout: 60
+        criticalPath: true
+    
+    - id: "review_payroll"
+      type: "decision"
+      properties:
+        name: "Review Payroll"
+        description: "Manager review of calculated payroll"
+        handler: "approval.review_payroll"
+        timeout: 120
+        requiresApproval: true
+    
+    - id: "generate_paystubs"
+      type: "action"
+      properties:
+        name: "Generate Paystubs"
+        description: "Generate individual paystub documents"
+        handler: "documents.generate_paystubs"
+        timeout: 90
+        parallel: true
+    
+    - id: "submit_tax_filing"
+      type: "action"
+      properties:
+        name: "Submit Tax Filing"
+        description: "Submit tax withholding to authorities"
+        handler: "tax.submit_filing"
+        timeout: 45
+        compliance: true
+    
+    - id: "process_payments"
+      type: "action"
+      properties:
+        name: "Process Payments"
+        description: "Execute ACH transfers and payment processing"
+        handler: "payments.process"
+        timeout: 90
+        financial: true
+    
+    - id: "send_notifications"
+      type: "action"
+      properties:
+        name: "Send Notifications"
+        description: "Send payroll completion notifications"
+        handler: "notifications.send"
+        timeout: 15
+        priority: "low"
 
   edges:
-    # Sequential: Authentication to approval check
     - id: "auth_to_approval"
       from: "authenticate_user"
-      to: "verify_payroll_approval"
+      to: "check_approval_status"
       type: "sequence"
-      properties:
-        name: "Authentication to Approval Check"
-        description: "Proceed to approval verification after successful login"
+      conditions: []
+    
+    - id: "approval_to_data"
+      from: "check_approval_status"
+      to: "fetch_employee_data"
+      type: "conditional" 
       conditions:
-        - field: "auth.result"
+        - field: "approval.status"
           operator: "equals"
-          value: "success"
-      metadata: {}
-
-    # Conditional: Approval to data collection (only if approved)
-    - id: "approval_to_data_collection"
-      from: "verify_payroll_approval"
-      to: "collect_employee_data"
-      type: "conditional"
-      properties:
-        name: "Approved to Data Collection"
-        description: "Collect employee data only after approval confirmation"
-      conditions:
-        - logic: "AND"
-          rules:
-            - field: "approval.status"
-              operator: "equals"
-              value: "approved"
-            - field: "approval.timestamp"
-              operator: "within_hours"
-              value: 48
-      data_mapping:
-        - source: "approval.pay_period"
-          target: "collection.pay_period"
-      metadata: {}
-
-    # Sequential: Data collection to payment processing
-    - id: "data_to_payment"
-      from: "collect_employee_data"
-      to: "execute_payment_processing"
+          value: "approved"
+    
+    - id: "data_to_calc"
+      from: "fetch_employee_data"
+      to: "calculate_payroll"
       type: "sequence"
-      properties:
-        name: "Data Collection to Payment Processing"
-        description: "Process payments using collected employee data"
-      data_mapping:
-        - source: "employee_data"
-          target: "payment.employee_data"
-      metadata: {}
+      conditions: []
+    
+    - id: "time_data_to_calc"
+      from: "fetch_time_records"
+      to: "calculate_payroll"
+      type: "sequence"
+      conditions: []
+    
+    - id: "calc_to_review"
+      from: "calculate_payroll"
+      to: "review_payroll"
+      type: "sequence"
+      conditions: []
+    
+    - id: "calc_to_payments"
+      from: "calculate_payroll"
+      to: "process_payments"
+      type: "sequence"
+      conditions: []
+    
+    # Payroll must be approved before downstream processes
+    - id: "review_to_paystubs"
+      from: "review_payroll"
+      to: "generate_paystubs"
+      type: "conditional"
+      conditions:
+        - field: "approval"
+          operator: "equals"
+          value: "approved"
+    
+    - id: "review_to_tax"
+      from: "review_payroll"
+      to: "submit_tax_filing"
+      type: "conditional"
+      conditions:
+        - field: "approval"
+          operator: "equals"
+          value: "approved"
+    
+    - id: "review_to_deposits"
+      from: "review_payroll"
+      to: "process_payments"
+      type: "conditional"
+      conditions:
+        - field: "approval"
+          operator: "equals"
+          value: "approved"
+    
+    # Notifications happen after everything else completes
+    - id: "paystubs_to_notify"
+      from: "generate_paystubs"
+      to: "send_notifications"
+      type: "sequence"
+      conditions: []
+    
+    - id: "tax_to_notify"
+      from: "submit_tax_filing"
+      to: "send_notifications"
+      type: "sequence"
+      conditions: []
+    
+    - id: "deposits_to_notify"
+      from: "process_payments"
+      to: "send_notifications"
+      type: "sequence"
+      conditions: []
 
   guards:
-    # RBAC protection for all operations (v0.1 compatible)
-    - name: "payroll_access_control"
+    - name: "payroll_rbac_guard"
       type: "rbac"
-      description: "Role-based access control for payroll operations"
       apply_to:
-        nodes:
-          [
-            "authenticate_user",
-            "verify_payroll_approval",
-            "collect_employee_data",
-            "execute_payment_processing",
-          ]
-        edges: ["auth_to_approval"]
+        nodes: ["authenticate_user"]
       config:
         type: "rbac"
         requiredRoles: ["payroll_admin", "finance_manager"]
         requiredPermissions: ["payroll:read", "payroll:write"]
         allowSuperuser: false
-      metadata: {}
-
-    # Rate limiting for payment processing (v0.1 compatible)
-    - name: "payment_rate_limiter"
+    
+    - name: "payment_rate_limit_guard"
       type: "rate_limit"
-      description: "Prevent excessive payment processing requests"
       apply_to:
-        nodes: ["execute_payment_processing"]
+        nodes: ["process_payments"]
       config:
         type: "rate_limit"
-        maxRequests: 2
+        maxRequests: 3
         windowMs: 3600000
         keyGenerator: "user"
-      metadata: {}
-
-  config:
-    timeout: 900
-    retry:
-      maxAttempts: 3
-      backoffMultiplier: 2
-    concurrency:
-      maxParallel: 2

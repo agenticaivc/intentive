@@ -177,6 +177,11 @@ export class Executor {
    * In production, this would delegate to actual node handlers
    */
   private async executeNodeHandler(node: IntentNode, executionContext: any): Promise<unknown> {
+    // Check for injected failure (for CLI testing)
+    if (node.properties && (node.properties as any).injectFailure === true) {
+      throw new Error(`Injected test failure in node: ${node.id}`);
+    }
+    
     // Simulate execution time
     await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
     
@@ -185,7 +190,8 @@ export class Executor {
       case 'action':
         return { success: true, timestamp: new Date().toISOString() };
       case 'decision':
-        return { approval: { status: 'approved' }, timestamp: new Date().toISOString() };
+        // Return approval as a string to match the conditional edge expectations
+        return { approval: 'approved', timestamp: new Date().toISOString() };
       case 'data':
         return { data: { processed: true }, count: 42, timestamp: new Date().toISOString() };
       default:

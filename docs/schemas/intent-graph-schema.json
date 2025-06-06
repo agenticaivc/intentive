@@ -102,6 +102,13 @@
           },
           "maxItems": 20,
           "description": "Classification tags"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Key-value labels for categorization"
         }
       }
     },
@@ -195,6 +202,42 @@
         },
         "output": {
           "$ref": "#/definitions/outputSpec"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "description": "Node-specific timeout in seconds"
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Number of retries for this node"
+        },
+        "criticalPath": {
+          "type": "boolean",
+          "description": "Whether this node is on the critical path"
+        },
+        "requiresApproval": {
+          "type": "boolean",
+          "description": "Whether this node requires manual approval"
+        },
+        "parallel": {
+          "type": "boolean",
+          "description": "Whether this node can run in parallel"
+        },
+        "compliance": {
+          "type": "boolean",
+          "description": "Whether this node is compliance-related"
+        },
+        "financial": {
+          "type": "boolean",
+          "description": "Whether this node involves financial operations"
+        },
+        "priority": {
+          "$ref": "#/definitions/enums/priorities",
+          "description": "Priority level of this node"
         }
       }
     },
@@ -362,8 +405,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/edgeCondition"
-          },
-          "minItems": 1
+          }
         },
         "data_mapping": {
           "type": "array",
@@ -445,7 +487,14 @@
           "$ref": "#/definitions/guardApplyTo"
         },
         "config": {
-          "$ref": "./guard-config-schema.json"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/rbacGuardConfig"
+            },
+            {
+              "$ref": "#/definitions/rateLimitGuardConfig"
+            }
+          ]
         },
         "metadata": {
           "type": "object",
@@ -513,6 +562,56 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 100
+        }
+      }
+    },
+    "rbacGuardConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "requiredRoles"],
+      "properties": {
+        "type": { "const": "rbac" },
+        "requiredRoles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "List of roles required to pass this guard"
+        },
+        "requiredPermissions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional list of permissions required"
+        },
+        "allowSuperuser": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether superuser role bypasses all checks"
+        }
+      }
+    },
+    "rateLimitGuardConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "maxRequests", "windowMs"],
+      "properties": {
+        "type": { "const": "rate_limit" },
+        "maxRequests": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Maximum number of requests allowed in the window"
+        },
+        "windowMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 86400000,
+          "description": "Time window in milliseconds (1s to 24h)"
+        },
+        "keyGenerator": {
+          "type": "string",
+          "enum": ["user", "ip", "custom"],
+          "default": "user",
+          "description": "How to generate rate limit keys"
         }
       }
     }
