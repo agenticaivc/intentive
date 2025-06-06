@@ -1,0 +1,15 @@
+routes:
+  - pattern: "/intent"
+    method: "POST" 
+    handler: "intent"
+    middleware: []
+    
+  - pattern: "/intent/:id"
+    method: "GET"
+    handler: "intent" 
+    middleware: []
+    
+  - pattern: "/graphql-fallback"
+    method: "POST"
+    handler: "graphqlFallback"
+    middleware: [] 

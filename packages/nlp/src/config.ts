@@ -38,4 +38,50 @@ export function validateConfig(): void {
 }
 
 // Validate configuration on module load
-validateConfig(); 
+validateConfig();
+
+// ========================================
+// Enhanced Parser Configuration (v0.1)
+// ========================================
+
+export interface NLPConfig {
+  parser: {
+    provider: 'openai' | 'local' | 'rule-based';
+    openai: {
+      model: string;
+      temperature: number;
+      maxTokens: number;
+    };
+    defaults: {
+      minConfidence: number;
+      maxAlternatives: number;
+      useCache: boolean;
+    };
+  };
+  cache: {
+    maxSize: number;
+    maxAge: number; // milliseconds
+  };
+  availableGraphIds: string[];
+}
+
+export const enhancedConfig: NLPConfig = {
+  parser: {
+    provider: 'openai',
+    openai: {
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.3'),
+      maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '1000', 10)
+    },
+    defaults: {
+      minConfidence: parseFloat(process.env.PARSER_MIN_CONFIDENCE || '0.5'),
+      maxAlternatives: parseInt(process.env.PARSER_MAX_ALTERNATIVES || '3', 10),
+      useCache: process.env.PARSER_USE_CACHE !== 'false'
+    }
+  },
+  cache: {
+    maxSize: parseInt(process.env.CACHE_MAX_SIZE || '1000', 10),
+    maxAge: parseInt(process.env.CACHE_MAX_AGE || '1800000', 10) // 30 minutes default
+  },
+  availableGraphIds: (process.env.AVAILABLE_GRAPH_IDS || 'payroll-processing,invoice-creation,user-management,report-generation').split(',')
+}; 

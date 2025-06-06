@@ -4,6 +4,9 @@ import { ExecutionState } from './ExecutionState';
 import { NodeLifecycle } from './NodeLifecycle';
 import { ConfigLoader, LoadedConfig } from './ConfigLoader';
 import { ConcurrencyManager } from './ConcurrencyManager';
+import { GraphQLFallback } from './graphql/GraphQLFallback';
+import { cfg, isGraphQLEnabled } from './graphql/config';
+import { logFallbackSkipped } from './graphql/logger';
 
 export interface ExecutorOptions {
   logger?: typeof console;
@@ -11,9 +14,19 @@ export interface ExecutorOptions {
 
 export class Executor {
   private logger: typeof console;
+  private graphqlFallback?: GraphQLFallback;
 
   constructor(options: ExecutorOptions = {}) {
     this.logger = options.logger || console;
+    
+    // Initialize GraphQL fallback if endpoint configured
+    if (isGraphQLEnabled()) {
+      try {
+        this.graphqlFallback = new GraphQLFallback();
+      } catch (error) {
+        this.logger.warn(`GraphQL fallback initialization failed: ${error instanceof Error ? error.message : error}`);
+      }
+    }
   }
 
   /**
@@ -182,6 +195,16 @@ export class Executor {
       throw new Error(`Injected test failure in node: ${node.id}`);
     }
     
+    // NEW: GraphQL fallback integration
+    if (this.shouldUseGraphQLFallback(node)) {
+      try {
+        return await this.graphqlFallback!.execute(node, executionContext.context);
+      } catch (error) {
+        this.logger.warn(`GraphQL fallback failed for ${node.id}, using mock: ${error instanceof Error ? error.message : error}`);
+        // Fall through to existing mock behavior
+      }
+    }
+    
     // Simulate execution time
     await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
     
@@ -197,6 +220,25 @@ export class Executor {
       default:
         return { result: 'completed' };
     }
+  }
+
+  /**
+   * Determine if GraphQL fallback should be used for this node
+   */
+  private shouldUseGraphQLFallback(node: IntentNode): boolean {
+    if (!this.graphqlFallback) {
+      logFallbackSkipped(node.id, 'GraphQL fallback not initialized');
+      return false;
+    }
+    
+    // Use fallback if explicitly requested via handler or forced via config
+    const shouldUse = node.properties.handler === 'graphql' || cfg.forceFallback;
+    
+    if (!shouldUse) {
+      logFallbackSkipped(node.id, 'Handler not graphql and forceFallback=false');
+    }
+    
+    return shouldUse;
   }
 
   /**

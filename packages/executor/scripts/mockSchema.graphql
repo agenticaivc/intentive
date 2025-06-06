@@ -1,0 +1,22 @@
+type Query {
+  data(id: ID!): DataNode
+  action(name: String!): ActionResult
+  node(id: ID!): GenericNode
+}
+
+type DataNode {
+  id: ID!
+  name: String!
+  value: String
+}
+
+type ActionResult {
+  status: String!
+  result: String
+}
+
+type GenericNode {
+  id: ID!
+  type: String!
+  status: String!
+} 

@@ -38,14 +38,20 @@
   ],
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "@types/node": "^22.15.30",
     "ajv-cli": "^5.0.0",
     "jest": "^29.7.0",
     "prettier": "^3.5.3",
     "ts-jest": "^29.3.4",
+    "ts-morph": "^21.0.1",
     "typescript": "^5.8.3",
     "yaml": "^2.3.4"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "jose": "^6.0.11",
+    "zod": "^3.25.53"
   }
 }

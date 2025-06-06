@@ -1,6 +1,13 @@
 import { JwtGuard } from '../../src/jwt';
 import { GuardCtx, GuardInput } from '../../src/GuardABI';
 
+// Mock jose library to avoid ES module issues
+jest.mock('jose', () => ({
+  jwtVerify: jest.fn(),
+  createRemoteJWKSet: jest.fn(),
+  importSPKI: jest.fn()
+}));
+
 describe('JwtGuard - Basic Functionality', () => {
   let mockContext: GuardCtx;
   let mockInput: GuardInput;
@@ -97,10 +104,13 @@ describe('JwtGuard - Basic Functionality', () => {
   });
 
   describe('Configuration Validation', () => {
-    it('should use default configuration values', () => {
-      const guard = new JwtGuard();
+    it('should use default configuration values with required secret', () => {
+      const guard = new JwtGuard({
+        algorithms: ['HS256'],
+        secret: 'test-secret'
+      });
       
-      // Should not throw with default config
+      // Should not throw with valid config
       expect(() => guard).not.toThrow();
     });
 

@@ -1,1 +1,1 @@
-{"root":["./src/index.ts","./src/server.ts","./src/plugins/logger.ts","./src/routes/health.ts","./src/routes/intent.ts","./src/schemas/intent.ts"],"version":"5.8.3"}
+{"root":["./src/index.ts","./src/router.ts","./src/server.ts","./src/plugins/logger.ts","./src/routes/health.ts","./src/routes/intent.ts","./src/schemas/intent.ts","./src/schemas/router.ts"],"version":"5.8.3"}

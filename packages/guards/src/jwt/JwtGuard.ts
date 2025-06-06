@@ -1,5 +1,6 @@
 import { Guard, GuardCtx, GuardInput, GuardResult } from '../GuardABI';
 import { JwtVerifier } from './JwtVerifier';
+import { RoleHierarchy } from './RoleHierarchy';
 import { GuardConfigLoader } from './config/GuardConfigLoader';
 import { JwtConfig } from './types';
 
@@ -8,12 +9,14 @@ export class JwtGuard implements Guard {
   readonly type = 'rbac' as const;
 
   private verifier: JwtVerifier;
+  private hierarchy: RoleHierarchy;
   private config: JwtConfig;
   private logger?: typeof console;
 
   constructor(config?: Partial<JwtConfig>) {
     this.config = GuardConfigLoader.load(config);
     this.verifier = new JwtVerifier(this.config);
+    this.hierarchy = new RoleHierarchy(this.config.hierarchy);
   }
 
   async init(ctx: GuardCtx): Promise<void> {
@@ -46,13 +49,43 @@ export class JwtGuard implements Guard {
       // Verify JWT signature and extract claims
       const claims = await this.verifier.verifyToken(token);
       
-      // For MVP, simple success if token is valid
+      // Extract node requirements
+      const requiredRoles = this.getRequiredRoles(input);
+      if (!requiredRoles) {
+        // No role requirements specified - just validate token
+        return {
+          status: 'success',
+          message: 'JWT authentication successful (no role requirements)',
+          meta: { 
+            userId: claims.sub,
+            roles: claims.roles || [],
+            stage
+          }
+        };
+      }
+
+      // Check role permissions using hierarchy
+      const roleCheck = this.hierarchy.checkPermission(claims.roles || [], requiredRoles);
+      
+      if (!roleCheck.hasAccess) {
+        return this.createForbiddenResult(roleCheck, input, stage);
+      }
+
+      this.logger?.info(`JWT Guard success: ${roleCheck.matchedExpression || 'default'}`, {
+        userId: claims.sub,
+        effectiveRoles: roleCheck.effectiveRoles,
+        matchedExpression: roleCheck.matchedExpression,
+        stage
+      });
+
       return {
         status: 'success',
-        message: 'JWT authentication successful',
+        message: 'JWT authentication and authorization successful',
         meta: { 
           userId: claims.sub,
           roles: claims.roles || [],
+          effectiveRoles: roleCheck.effectiveRoles,
+          matchedExpression: roleCheck.matchedExpression,
           stage
         }
       };
@@ -80,13 +113,50 @@ export class JwtGuard implements Guard {
     return null;
   }
 
+  private getRequiredRoles(input: GuardInput): string | null {
+    // Extract from guard configuration or node metadata
+    const guardConfig = input.parameters.guardConfig as any;
+    return guardConfig?.requiredRoles || null;
+  }
+
   private createUnauthorizedResult(message: string): GuardResult {
+    this.logger?.warn(`JWT Guard blocked: ${message}`, {
+      event: 'jwt_guard',
+      status: 'block',
+      reason: message
+    });
+
     return {
       status: 'block',
       message: `Unauthorized: ${message}`,
       meta: { 
         code: 'INTENTIVE_JWT_INVALID',
         httpStatus: 401
+      }
+    };
+  }
+
+  private createForbiddenResult(
+    roleCheck: any, 
+    input: GuardInput, 
+    stage: string
+  ): GuardResult {
+    this.logger?.warn(`JWT Guard blocked: Insufficient role permissions`, {
+      event: 'jwt_guard',
+      stage,
+      status: 'block',
+      nodeOrEdgeId: input.nodeOrEdgeId,
+      missingRoles: roleCheck.missingRoles,
+      userRoles: roleCheck.effectiveRoles
+    });
+
+    return {
+      status: 'block',
+      message: 'Forbidden: Insufficient role permissions',
+      meta: {
+        code: 'INTENTIVE_INSUFFICIENT_PERMISSIONS',
+        missingRoles: roleCheck.missingRoles,
+        httpStatus: 403
       }
     };
   }

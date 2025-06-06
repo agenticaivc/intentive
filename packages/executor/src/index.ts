@@ -5,4 +5,5 @@ export * from './ExecutionState';
 export * from './NodeLifecycle';
 export * from './ConfigLoader';
 export * from './ConcurrencyManager';
-export * from './Executor'; 
+export * from './Executor';
+export * from './graphql/GraphQLFallback'; 

@@ -16,10 +16,13 @@
     "build": "tsc --build",
     "start": "node dist/server.js",
     "lint": "eslint src/**/*.ts",
+    "lint:routes": "node -e \"require('yaml').parse(require('fs').readFileSync('config/gateway.routes.yaml', 'utf8'))\"",
     "format:write": "prettier --write src/**/*.ts",
     "format:check": "prettier --check src/**/*.ts",
     "test": "jest",
-    "test:gateway": "jest -c packages/gateway/jest.config.js"
+    "test:gateway": "jest -c packages/gateway/jest.config.js",
+    "guard:interfaces": "ts-node ../../scripts/guard-intent-types.ts",
+    "ci": "npm run guard:interfaces && npm run lint:routes && npm test"
   },
   "keywords": [
     "fastify",
@@ -33,7 +36,10 @@
     "fastify-plugin": "^4.5.1",
     "pino": "^8.17.2",
     "pino-pretty": "^10.3.1",
-    "@intentive/nlp": "file:../nlp"
+    "@intentive/nlp": "file:../nlp",
+    "@intentive/executor": "file:../executor",
+    "zod": "^3.25.53",
+    "yaml": "^2.3.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",
@@ -47,7 +53,8 @@
     "eslint": "^8.56.0",
     "prettier": "^3.5.3",
     "validator": "^13.11.0",
-    "@types/validator": "^13.11.8"
+    "@types/validator": "^13.11.8",
+    "ts-morph": "^21.0.1"
   },
   "engines": {
     "node": ">=18.0.0"
