@@ -1,0 +1,37 @@
+name: Golden Path Tests
+on: [push, pull_request]
+jobs:
+  golden-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2  # Hard 120s timeout
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - run: pnpm install --frozen-lockfile
+      
+      # Granular cache with lockfile hash for proper invalidation
+      - uses: actions/cache@v3
+        with:
+          path: packages/tests/.vitest
+          key: vitest-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+      
+      - run: npm run test:golden:bail
+      - run: npm run test:golden:coverage
+      
+      # Surface E2E timing in CI summary
+      - name: Publish E2E timing
+        if: always()
+        run: |
+          DUR=$(grep -oP '⏱️  E2E execution time: \K[0-9.]+' ./packages/tests/.vitest-output || echo 'n/a')
+          echo "### Payroll E2E duration: \`${DUR} ms\`" >> $GITHUB_STEP_SUMMARY 

@@ -1,0 +1,110 @@
+apiVersion: "intentive.dev/v1"
+kind: "IntentGraph"
+metadata:
+  name: "payroll-processing"
+  description: "Simplified 5-node payroll processing for golden-path testing"
+  version: "1.0.0"
+
+spec:
+  config:
+    concurrency:
+      maxParallel: 2
+    timeout: 300
+    retry:
+      maxAttempts: 2
+      backoffMultiplier: 2
+
+  nodes:
+    - id: "authenticate_user"
+      type: "action"
+      properties:
+        name: "Authenticate User"
+        description: "Verify user identity and check authorization"
+        handler: "auth.authenticate"
+        timeout: 30
+        
+    - id: "check_approval_status"
+      type: "decision"
+      properties:
+        name: "Check Approval Status"
+        description: "Verify payroll run has proper approvals"
+        handler: "approval.check_status"
+        timeout: 15
+    
+    - id: "fetch_employee_data"
+      type: "data"
+      properties:
+        name: "Fetch Employee Data"
+        description: "Retrieve employee records from HR system"
+        handler: "data.fetch_employees"
+        timeout: 30
+        retryCount: 2
+    
+    - id: "calculate_payroll"
+      type: "action"
+      properties:
+        name: "Calculate Payroll"
+        description: "Calculate gross pay, deductions, and net pay"
+        handler: "payroll.calculate"
+        timeout: 60
+        criticalPath: true
+    
+    - id: "process_payments"
+      type: "action"
+      properties:
+        name: "Process Payments"
+        description: "Execute ACH transfers and payment processing"
+        handler: "payments.process"
+        timeout: 90
+        financial: true
+
+  edges:
+    - id: "auth_to_approval"
+      from: "authenticate_user"
+      to: "check_approval_status"
+      type: "sequence"
+      conditions: []
+    
+    - id: "approval_to_data"
+      from: "check_approval_status"
+      to: "fetch_employee_data"
+      type: "conditional" 
+      conditions:
+        - field: "approval.status"
+          operator: "equals"
+          value: "approved"
+    
+    - id: "data_to_calc"
+      from: "fetch_employee_data"
+      to: "calculate_payroll"
+      type: "sequence"
+      conditions: []
+    
+    - id: "calc_to_payments"
+      from: "calculate_payroll"
+      to: "process_payments"
+      type: "sequence"
+      conditions: []
+
+  guards:
+    - name: "payroll_rbac"
+      type: "rbac"
+      description: "Role-based access control for payroll operations"
+      apply_to:
+        nodes: ["authenticate_user", "check_approval_status", "calculate_payroll", "process_payments"]
+      config:
+        required_roles: ["payroll_admin", "finance_manager"]
+        required_permissions: ["payroll:read", "payroll:write", "finance:calculate"]
+        check_mode: "strict"
+        failure_action: "block"
+
+    - name: "payment_rate_limit"
+      type: "rate_limit"
+      description: "Rate limiting for payment processing"
+      apply_to:
+        nodes: ["process_payments"]
+      config:
+        max_requests: 3
+        window_seconds: 3600
+        sliding_window: true
+        failure_action: "delay" 
