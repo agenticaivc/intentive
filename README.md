@@ -268,6 +268,12 @@ curl -X POST http://localhost:4000/intent -H "Content-Type: application/json" -d
 * **Guard ABI** – `docs/concepts/guard-abi.md`  
 * **Architecture** – _placeholder (`docs/architecture.md`)_
 
+## 🎯 Quick Start with Specs:
+Understand the concept: Read docs/concepts/execution-semantics.md
+Learn the schema: Review docs/schemas/intent-graph-schema.yaml
+See it in action: Check docs/examples/payroll-graph.yaml
+Build your own: Follow docs/concepts/yaml-schema-guide.md
+
 ---
 
 ## 🛣️ Road-map
