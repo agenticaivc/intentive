@@ -1,0 +1,50 @@
+# Minimal Intent Graph Example
+# Demonstrates basic schema structure with single node workflow
+
+apiVersion: intentive.dev/v1
+kind: IntentGraph
+metadata:
+  name: minimal-example
+  description: "Simplest possible intent graph for getting started"
+  version: "1.0.0"
+  author: "intentive-docs"
+  created: "2024-01-15T10:00:00Z"
+
+spec:
+  nodes:
+    - id: "hello_world"
+      type: "action"
+      properties:
+        name: "Hello World Action"
+        description: "Basic action node for demonstration"
+        handler: "system.log_message"
+        parameters:
+          - name: "message"
+            type: "string"
+            required: true
+            description: "Message to log"
+            default: "Hello, Intent Graph!"
+          - name: "log_level"
+            type: "string"
+            required: false
+            description: "Logging level"
+            default: "info"
+        output:
+          type: "object"
+          properties:
+            timestamp:
+              type: "string"
+            success:
+              type: "boolean"
+      metadata:
+        tags: ["demo", "simple"]
+        estimated_duration: "1s"
+        priority: "low"
+
+  config:
+    timeout: 60
+    retry:
+      maxAttempts: 1
+      backoffMultiplier: 1
+    concurrency:
+      maxParallel: 1

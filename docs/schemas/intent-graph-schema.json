@@ -13,7 +13,7 @@
       "description": "API version identifier"
     },
     "kind": {
-      "type": "string", 
+      "type": "string",
       "enum": ["IntentGraph"],
       "description": "Resource type"
     },
@@ -25,10 +25,43 @@
     }
   },
   "definitions": {
-    "simpleEnums": {
-      "nodeTypes": ["action", "decision", "data"],
-      "edgeTypes": ["sequence", "conditional"],
-      "guardTypes": ["rbac", "rate_limit", "audit", "custom", "temporal"]
+    "enums": {
+      "nodeTypes": {
+        "type": "string",
+        "enum": ["action", "decision", "data"]
+      },
+      "edgeTypes": {
+        "type": "string",
+        "enum": ["sequence", "conditional"]
+      },
+      "guardTypes": {
+        "type": "string",
+        "enum": ["rbac", "rate_limit", "audit", "custom", "temporal"]
+      },
+      "parameterTypes": {
+        "type": "string",
+        "enum": ["string", "number", "boolean", "array", "object"]
+      },
+      "operators": {
+        "type": "string",
+        "enum": [
+          "equals",
+          "not_equals",
+          "greater_than",
+          "less_than",
+          "in",
+          "contains",
+          "within_hours"
+        ]
+      },
+      "logicOperators": {
+        "type": "string",
+        "enum": ["AND", "OR", "NOT"]
+      },
+      "priorities": {
+        "type": "string",
+        "enum": ["low", "medium", "high", "critical"]
+      }
     },
     "metadata": {
       "type": "object",
@@ -117,8 +150,7 @@
           "description": "Unique node identifier"
         },
         "type": {
-          "type": "string",
-          "enum": ["action", "decision", "data"],
+          "$ref": "#/definitions/enums/nodeTypes",
           "description": "Node type classification"
         },
         "properties": {
@@ -176,8 +208,7 @@
           "pattern": "^[a-z][a-z0-9_]*$"
         },
         "type": {
-          "type": "string",
-          "enum": ["string", "number", "boolean", "array", "object"]
+          "$ref": "#/definitions/enums/parameterTypes"
         },
         "required": {
           "type": "boolean",
@@ -215,8 +246,7 @@
       "additionalProperties": false,
       "properties": {
         "type": {
-          "type": "string",
-          "enum": ["string", "number", "boolean", "array", "object"]
+          "$ref": "#/definitions/enums/parameterTypes"
         },
         "required": {
           "type": "boolean"
@@ -251,8 +281,7 @@
           "type": "string"
         },
         "operator": {
-          "type": "string",
-          "enum": ["equals", "not_equals", "greater_than", "less_than", "in", "contains", "within_hours"]
+          "$ref": "#/definitions/enums/operators"
         },
         "value": {},
         "output": {
@@ -276,8 +305,7 @@
       },
       "properties": {
         "type": {
-          "type": "string",
-          "enum": ["string", "number", "boolean", "array", "object"]
+          "$ref": "#/definitions/enums/parameterTypes"
         },
         "items": {
           "$ref": "#/definitions/typeSpec"
@@ -305,8 +333,7 @@
           "pattern": "^[0-9]+[smh]$"
         },
         "priority": {
-          "type": "string",
-          "enum": ["low", "medium", "high", "critical"]
+          "$ref": "#/definitions/enums/priorities"
         }
       }
     },
@@ -326,8 +353,7 @@
           "type": "string"
         },
         "type": {
-          "type": "string",
-          "enum": ["sequence", "conditional"]
+          "$ref": "#/definitions/enums/edgeTypes"
         },
         "properties": {
           "$ref": "#/definitions/edgeProperties"
@@ -336,7 +362,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/edgeCondition"
-          }
+          },
+          "minItems": 1
         },
         "data_mapping": {
           "type": "array",
@@ -346,7 +373,7 @@
         },
         "metadata": {
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": false
         }
       }
     },
@@ -373,8 +400,7 @@
           "additionalProperties": false,
           "properties": {
             "logic": {
-              "type": "string",
-              "enum": ["AND", "OR", "NOT"]
+              "$ref": "#/definitions/enums/logicOperators"
             },
             "rules": {
               "type": "array",
@@ -410,8 +436,7 @@
           "pattern": "^[a-z0-9_]+$"
         },
         "type": {
-          "type": "string",
-          "enum": ["rbac", "rate_limit", "audit", "custom", "temporal"]
+          "$ref": "#/definitions/enums/guardTypes"
         },
         "description": {
           "type": "string"
@@ -425,7 +450,7 @@
         },
         "metadata": {
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": false
         }
       }
     },
@@ -493,4 +518,4 @@
       }
     }
   }
-} 
+}

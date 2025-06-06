@@ -33,7 +33,7 @@ spec:
       metadata:
         tags: ["authentication", "security"]
         estimated_duration: "1s"
-    
+
     - id: "process_payroll"
       type: "action"
       properties:
@@ -63,7 +63,7 @@ spec:
         tags: ["payroll", "finance"]
         estimated_duration: "5m"
         priority: "high"
-    
+
     # Example decision node - conditional logic
     - id: "check_approval_status"
       type: "decision"
@@ -92,7 +92,7 @@ spec:
       metadata:
         tags: ["approval", "governance"]
         estimated_duration: "30s"
-    
+
     # Example data transformation node
     - id: "calculate_totals"
       type: "data"
@@ -131,7 +131,7 @@ spec:
       metadata:
         tags: ["calculation", "payroll"]
         estimated_duration: "2m"
-  
+
   # Relationships between nodes - define execution flow and dependencies
   edges:
     # Sequential execution edge
@@ -151,7 +151,7 @@ spec:
           value: ["admin", "payroll_manager", "hr_manager"]
       metadata:
         priority: "high"
-    
+
     # Conditional execution edge with complex logic
     - id: "approval_to_calculation"
       from: "check_approval_status"
@@ -171,7 +171,7 @@ spec:
               value: 24
       metadata:
         condition_description: "Payroll approved within last 24 hours"
-    
+
     # Conditional edge with OR logic
     - id: "calculation_to_processing"
       from: "calculate_totals"
@@ -191,11 +191,11 @@ spec:
               value: true
       metadata:
         condition_description: "Process if amounts > 0 OR force run enabled"
-    
+
     # Sequential edge with data transformation
     - id: "approval_rejected_path"
       from: "check_approval_status"
-      to: "authenticate_user"  # Loop back for re-authentication
+      to: "authenticate_user" # Loop back for re-authentication
       type: "sequence"
       properties:
         name: "Rejection Flow"
@@ -211,7 +211,7 @@ spec:
           target: "auth.allow_retry"
       metadata:
         is_error_path: true
-  
+
   # Security and validation rules - applied to nodes, edges, or entire graph
   guards:
     # RBAC (Role-Based Access Control) guard
@@ -224,12 +224,12 @@ spec:
       config:
         required_roles: ["payroll_admin", "finance_manager"]
         required_permissions: ["payroll:write", "finance:calculate"]
-        check_mode: "strict"  # strict | permissive
-        failure_action: "block"  # block | warn | audit
+        check_mode: "strict" # strict | permissive
+        failure_action: "block" # block | warn | audit
       metadata:
         priority: "critical"
         description: "Ensures only authorized users can execute payroll operations"
-    
+
     # Rate limiting guard
     - name: "payroll_rate_limit"
       type: "rate_limit"
@@ -238,15 +238,15 @@ spec:
         nodes: ["process_payroll"]
       config:
         max_requests: 5
-        time_window: "1h"  # 1 hour
+        time_window: "1h" # 1 hour
         per_user: true
         burst_allowance: 2
-        failure_action: "delay"  # delay | block | warn
+        failure_action: "delay" # delay | block | warn
         backoff_strategy: "exponential"
       metadata:
         priority: "medium"
         description: "Limits payroll processing to 5 requests per hour per user"
-    
+
     # Audit logging guard
     - name: "sensitive_operations_audit"
       type: "audit"
@@ -257,14 +257,14 @@ spec:
       config:
         log_level: "info"
         include_parameters: true
-        include_results: false  # Don't log sensitive payroll data
-        retention_days: 2555  # 7 years for financial compliance
+        include_results: false # Don't log sensitive payroll data
+        retention_days: 2555 # 7 years for financial compliance
         destinations: ["audit_db", "siem_system"]
         encrypt_logs: true
       metadata:
         priority: "high"
         compliance: ["SOX", "GDPR", "PCI-DSS"]
-    
+
     # Custom validation guard
     - name: "payroll_business_rules"
       type: "custom"
@@ -277,7 +277,7 @@ spec:
           - name: "minimum_wage_check"
             expression: "employee.hourly_rate >= jurisdiction.minimum_wage"
             message: "Hourly rate cannot be below minimum wage"
-          - name: "overtime_limit_check"  
+          - name: "overtime_limit_check"
             expression: "employee.overtime_hours <= 80"
             message: "Overtime hours cannot exceed 80 per period"
           - name: "payroll_period_validation"
@@ -287,7 +287,7 @@ spec:
       metadata:
         priority: "high"
         description: "Validates business rules before processing payroll"
-    
+
     # Time-based access guard
     - name: "business_hours_only"
       type: "temporal"
@@ -301,7 +301,7 @@ spec:
           end: "17:00"
         timezone: "America/New_York"
         exceptions:
-          - date: "2024-12-31"  # Year-end processing
+          - date: "2024-12-31" # Year-end processing
             hours:
               start: "00:00"
               end: "23:59"
@@ -309,10 +309,10 @@ spec:
       metadata:
         priority: "medium"
         description: "Ensures payroll processing only during business hours"
-    
+
     # NOTE: Guard execution order and dependencies deferred to Issue 3
     # Future: guard_dependencies, execution_order, guard_chains
-  
+
   # Execution configuration - runtime settings and parameters
   config:
     # Default execution timeout in seconds
@@ -323,4 +323,4 @@ spec:
       backoffMultiplier: 2
     # Parallel execution limits
     concurrency:
-      maxParallel: 5 
+      maxParallel: 5

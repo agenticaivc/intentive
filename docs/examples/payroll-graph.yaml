@@ -1,0 +1,264 @@
+# Payroll Processing Intent Graph - Enhanced Schema Demo
+# Tests all v0.1 schema features: centralized enums, strict validation, conditional rules
+
+apiVersion: intentive.dev/v1
+kind: IntentGraph
+metadata:
+  name: payroll-processing
+  description: "Production-ready payroll workflow demonstrating enhanced schema validation"
+  version: "1.0.0"
+  author: "intentive-schema-team"
+  created: "2024-01-15T10:00:00Z"
+  tags: ["payroll", "finance", "production", "schema-demo"]
+
+spec:
+  nodes:
+    # Action node - Authentication with MFA
+    - id: "authenticate_user"
+      type: "action"
+      properties:
+        name: "Authenticate Payroll User"
+        description: "Multi-factor authentication for payroll system access"
+        handler: "auth.authenticate_mfa"
+        parameters:
+          - name: "user_id"
+            type: "string"
+            required: true
+            description: "Employee ID or username"
+            pattern: "^[a-zA-Z0-9_]{3,20}$"
+          - name: "mfa_token"
+            type: "string"
+            required: true
+            description: "6-digit time-based token"
+            pattern: "^[0-9]{6}$"
+        output:
+          type: "object"
+          properties:
+            session_id:
+              type: "string"
+            user_role:
+              type: "string"
+      metadata:
+        tags: ["authentication", "security", "mfa"]
+        estimated_duration: "3s"
+        priority: "critical"
+
+    # Decision node - Check approval status
+    - id: "verify_payroll_approval"
+      type: "decision"
+      properties:
+        name: "Verify Payroll Period Approval"
+        description: "Ensure current payroll period has proper managerial approval"
+        handler: "approval.verify_status"
+        parameters:
+          - name: "pay_period"
+            type: "string"
+            required: true
+            description: "Target payroll period in YYYY-MM format"
+            pattern: "^[0-9]{4}-[0-9]{2}$"
+        conditions:
+          - field: "approval.status"
+            operator: "equals"
+            value: "approved"
+            output: "proceed_to_processing"
+          - field: "approval.status"
+            operator: "equals"
+            value: "pending"
+            output: "wait_for_approval"
+          - field: "approval.status"
+            operator: "equals"
+            value: "rejected"
+            output: "escalate_rejection"
+      metadata:
+        tags: ["approval", "governance", "compliance"]
+        estimated_duration: "2s"
+        priority: "high"
+
+    # Data node - Fetch employee information
+    - id: "collect_employee_data"
+      type: "data"
+      properties:
+        name: "Collect Employee Payroll Data"
+        description: "Aggregate all employee data needed for payroll calculation"
+        handler: "data.collect_payroll_data"
+        parameters:
+          - name: "pay_period"
+            type: "string"
+            required: true
+            description: "Payroll period for data collection"
+            pattern: "^[0-9]{4}-[0-9]{2}$"
+          - name: "include_departments"
+            type: "array"
+            required: false
+            description: "Specific departments to include"
+            items:
+              type: "string"
+            default: []
+        output:
+          type: "array"
+          items:
+            type: "object"
+      metadata:
+        tags: ["data", "collection", "employees"]
+        estimated_duration: "8s"
+        priority: "medium"
+
+    # Action node - Process payments
+    - id: "execute_payment_processing"
+      type: "action"
+      properties:
+        name: "Execute Payment Processing"
+        description: "Generate payment files and initiate bank transfers"
+        handler: "payments.execute_batch"
+        parameters:
+          - name: "employee_data"
+            type: "array"
+            required: true
+            description: "Employee data from collection step"
+          - name: "dry_run_mode"
+            type: "boolean"
+            required: false
+            description: "Execute in test mode without actual transfers"
+            default: false
+        output:
+          type: "object"
+          properties:
+            total_payments:
+              type: "number"
+            batch_reference:
+              type: "string"
+      metadata:
+        tags: ["payment", "processing", "banking"]
+        estimated_duration: "45s"
+        priority: "critical"
+
+  edges:
+    # Sequential: Authentication to approval check
+    - id: "auth_to_approval"
+      from: "authenticate_user"
+      to: "verify_payroll_approval"
+      type: "sequence"
+      properties:
+        name: "Authentication to Approval Check"
+        description: "Proceed to approval verification after successful login"
+      conditions:
+        - field: "auth.result"
+          operator: "equals"
+          value: "success"
+      metadata: {}
+
+    # Conditional: Approval to data collection (only if approved)
+    - id: "approval_to_data_collection"
+      from: "verify_payroll_approval"
+      to: "collect_employee_data"
+      type: "conditional"
+      properties:
+        name: "Approved to Data Collection"
+        description: "Collect employee data only after approval confirmation"
+      conditions:
+        - logic: "AND"
+          rules:
+            - field: "approval.status"
+              operator: "equals"
+              value: "approved"
+            - field: "approval.timestamp"
+              operator: "within_hours"
+              value: 48
+      data_mapping:
+        - source: "approval.pay_period"
+          target: "collection.pay_period"
+      metadata: {}
+
+    # Sequential: Data collection to payment processing
+    - id: "data_to_payment"
+      from: "collect_employee_data"
+      to: "execute_payment_processing"
+      type: "sequence"
+      properties:
+        name: "Data Collection to Payment Processing"
+        description: "Process payments using collected employee data"
+      data_mapping:
+        - source: "employee_data"
+          target: "payment.employee_data"
+      metadata: {}
+
+  guards:
+    # RBAC protection for all operations
+    - name: "payroll_access_control"
+      type: "rbac"
+      description: "Role-based access control for payroll operations"
+      apply_to:
+        nodes:
+          [
+            "authenticate_user",
+            "verify_payroll_approval",
+            "collect_employee_data",
+            "execute_payment_processing",
+          ]
+        edges: ["auth_to_approval"]
+      config:
+        required_roles: ["payroll_admin", "finance_manager"]
+        required_permissions: ["payroll:read", "payroll:write"]
+        check_mode: "strict"
+        failure_action: "block"
+      metadata: {}
+
+    # Rate limiting for payment processing
+    - name: "payment_rate_limiter"
+      type: "rate_limit"
+      description: "Prevent excessive payment processing requests"
+      apply_to:
+        nodes: ["execute_payment_processing"]
+      config:
+        max_requests: 2
+        time_window: "1h"
+        per_user: true
+        failure_action: "delay"
+      metadata: {}
+
+    # Audit logging
+    - name: "financial_audit_trail"
+      type: "audit"
+      description: "Complete audit trail for financial operations"
+      apply_to:
+        nodes: ["execute_payment_processing", "verify_payroll_approval"]
+      config:
+        log_level: "info"
+        include_parameters: true
+        retention_days: 2555
+        encrypt_logs: true
+      metadata: {}
+
+    # Business hours enforcement
+    - name: "business_hours_restriction"
+      type: "temporal"
+      description: "Restrict payment processing to business hours"
+      apply_to:
+        nodes: ["execute_payment_processing"]
+      config:
+        allowed_days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        allowed_hours:
+          start: "09:00"
+          end: "17:00"
+        timezone: "America/New_York"
+        failure_action: "block"
+      metadata: {}
+
+    # Custom business rule validation
+    - name: "payroll_business_validation"
+      type: "custom"
+      description: "Enforce company-specific payroll business rules"
+      apply_to:
+        nodes: ["execute_payment_processing"]
+      config:
+        handler: "payroll.validate_business_rules"
+        failure_action: "block"
+      metadata: {}
+
+  config:
+    timeout: 900
+    retry:
+      maxAttempts: 3
+      backoffMultiplier: 2
+    concurrency:
+      maxParallel: 2

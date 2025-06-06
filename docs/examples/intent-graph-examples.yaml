@@ -42,7 +42,7 @@ spec:
         tags: ["authentication", "security", "entry-point"]
         estimated_duration: "2s"
         priority: "critical"
-    
+
     # Approval status verification
     - id: "check_approval_status"
       type: "decision"
@@ -69,7 +69,7 @@ spec:
             value: "approved"
             output: "approved"
           - field: "approval.status"
-            operator: "equals" 
+            operator: "equals"
             value: "pending"
             output: "pending"
           - field: "approval.status"
@@ -80,7 +80,7 @@ spec:
         tags: ["approval", "governance", "decision"]
         estimated_duration: "1s"
         priority: "high"
-    
+
     # Employee data retrieval
     - id: "fetch_employee_data"
       type: "data"
@@ -120,7 +120,7 @@ spec:
         tags: ["data", "employee", "retrieval"]
         estimated_duration: "5s"
         priority: "medium"
-    
+
     # Payroll calculations
     - id: "calculate_payroll"
       type: "data"
@@ -176,7 +176,7 @@ spec:
         tags: ["calculation", "payroll", "finance"]
         estimated_duration: "10s"
         priority: "high"
-    
+
     # Final processing and payment generation
     - id: "process_payments"
       type: "action"
@@ -211,7 +211,7 @@ spec:
         tags: ["payment", "processing", "financial"]
         estimated_duration: "30s"
         priority: "critical"
-  
+
   edges:
     # Sequential flow: Authentication -> Approval Check
     - id: "auth_to_approval"
@@ -228,10 +228,8 @@ spec:
         - field: "user.role"
           operator: "in"
           value: ["payroll_admin", "finance_manager", "hr_manager"]
-      metadata:
-        priority: "high"
-        description: "Only authenticated users with proper roles can proceed"
-    
+      metadata: {}
+
     # Conditional flow: Approval -> Data Fetch (only if approved)
     - id: "approval_to_fetch"
       from: "check_approval_status"
@@ -249,10 +247,8 @@ spec:
             - field: "approval.timestamp"
               operator: "within_hours"
               value: 72
-      metadata:
-        condition_description: "Payroll approved within last 72 hours"
-        priority: "high"
-    
+      metadata: {}
+
     # Sequential flow: Data Fetch -> Calculation
     - id: "fetch_to_calculate"
       from: "fetch_employee_data"
@@ -266,9 +262,8 @@ spec:
           target: "payroll_calc.employee_data"
         - source: "system.tax_rates"
           target: "payroll_calc.tax_rates"
-      metadata:
-        description: "Automatic progression with data mapping"
-    
+      metadata: {}
+
     # Conditional flow: Calculation -> Processing (with validation)
     - id: "calculate_to_process"
       from: "calculate_payroll"
@@ -292,10 +287,8 @@ spec:
       data_mapping:
         - source: "calculations"
           target: "payment.payroll_calculations"
-      metadata:
-        condition_description: "Process only if calculations are valid and error-free"
-        priority: "critical"
-    
+      metadata: {}
+
     # Error handling: Rejection flow
     - id: "approval_rejected"
       from: "check_approval_status"
@@ -313,32 +306,40 @@ spec:
           target: "auth.error_message"
         - source: "approval.retry_allowed"
           target: "auth.allow_retry"
-      metadata:
-        is_error_path: true
-        description: "Error handling path for rejected approvals"
-  
+      metadata: {}
+
   guards:
     # RBAC guard for sensitive operations
     - name: "payroll_rbac"
       type: "rbac"
       description: "Role-based access control for all payroll operations"
       apply_to:
-        nodes: ["authenticate_user", "check_approval_status", "calculate_payroll", "process_payments"]
+        nodes:
+          [
+            "authenticate_user",
+            "check_approval_status",
+            "calculate_payroll",
+            "process_payments",
+          ]
         edges: ["auth_to_approval", "calculate_to_process"]
       config:
         required_roles: ["payroll_admin", "finance_manager"]
-        required_permissions: ["payroll:read", "payroll:write", "finance:calculate"]
+        required_permissions:
+          ["payroll:read", "payroll:write", "finance:calculate"]
         check_mode: "strict"
         failure_action: "block"
         role_hierarchy:
           payroll_admin: ["payroll:read", "payroll:write"]
-          finance_manager: ["payroll:read", "payroll:write", "finance:calculate", "finance:approve"]
+          finance_manager:
+            [
+              "payroll:read",
+              "payroll:write",
+              "finance:calculate",
+              "finance:approve",
+            ]
           hr_manager: ["payroll:read"]
-      metadata:
-        priority: "critical"
-        compliance: ["SOX", "PCI-DSS"]
-        description: "Ensures only authorized personnel can access payroll functions"
-    
+      metadata: {}
+
     # Rate limiting for payment processing
     - name: "payment_rate_limit"
       type: "rate_limit"
@@ -353,31 +354,27 @@ spec:
         failure_action: "delay"
         backoff_strategy: "exponential"
         max_delay: "5m"
-      metadata:
-        priority: "medium"
-        description: "Limits payment processing to 3 attempts per hour per user"
-    
+      metadata: {}
+
     # Comprehensive audit logging
     - name: "financial_audit"
       type: "audit"
       description: "Complete audit trail for all financial operations"
       apply_to:
-        nodes: ["calculate_payroll", "process_payments", "check_approval_status"]
+        nodes:
+          ["calculate_payroll", "process_payments", "check_approval_status"]
         edges: ["approval_to_fetch", "calculate_to_process"]
       config:
         log_level: "info"
         include_parameters: true
-        include_results: false  # Sensitive financial data excluded
+        include_results: false # Sensitive financial data excluded
         sensitive_fields: ["ssn", "bank_account", "salary"]
-        retention_days: 2555  # 7 years
+        retention_days: 2555 # 7 years
         destinations: ["audit_db", "compliance_system", "siem"]
         encrypt_logs: true
         compression: "gzip"
-      metadata:
-        priority: "critical"
-        compliance: ["SOX", "GDPR", "HIPAA"]
-        description: "Maintains comprehensive audit trail for regulatory compliance"
-    
+      metadata: {}
+
     # Business hours restriction
     - name: "business_hours_only"
       type: "temporal"
@@ -391,19 +388,17 @@ spec:
           end: "17:00"
         timezone: "America/New_York"
         exceptions:
-          - date: "2024-12-31"  # Year-end processing
+          - date: "2024-12-31" # Year-end processing
             hours:
               start: "00:00"
               end: "23:59"
           - date_range:
               start: "2024-12-25"
               end: "2024-12-26"
-            allowed: false  # No processing during holidays
+            allowed: false # No processing during holidays
         failure_action: "block"
-      metadata:
-        priority: "medium"
-        description: "Ensures payment processing only during secure business hours"
-    
+      metadata: {}
+
     # Custom business rule validation
     - name: "payroll_business_rules"
       type: "custom"
@@ -431,25 +426,23 @@ spec:
             severity: "error"
         failure_action: "block"
         warning_action: "log"
-      metadata:
-        priority: "high"
-        description: "Validates business rules and compliance requirements"
-  
+      metadata: {}
+
   config:
     # Execution timeouts
-    timeout: 600  # 10 minutes total
-    
+    timeout: 600 # 10 minutes total
+
     # Retry configuration
     retry:
       maxAttempts: 3
       backoffMultiplier: 2
       retry_on_errors: ["network_timeout", "temporary_failure"]
       no_retry_errors: ["authentication_failed", "permission_denied"]
-    
+
     # Concurrency limits
     concurrency:
-      maxParallel: 3  # Conservative for financial operations
-      
+      maxParallel: 3 # Conservative for financial operations
+
     # Notification settings
     notifications:
       on_success:
@@ -459,7 +452,7 @@ spec:
         - type: "slack"
           channel: "#payroll-alerts"
           message: "Payroll processing completed successfully for period {pay_period}"
-      
+
       on_failure:
         - type: "email"
           recipients: ["payroll@company.com", "it-alerts@company.com"]
@@ -468,16 +461,16 @@ spec:
         - type: "pager"
           service: "payroll_oncall"
           escalation_policy: "financial_critical"
-    
+
     # Environment-specific settings
     environment_overrides:
       production:
-        timeout: 1800  # 30 minutes in production
+        timeout: 1800 # 30 minutes in production
         concurrency:
-          maxParallel: 1  # Single-threaded in production for safety
+          maxParallel: 1 # Single-threaded in production for safety
       staging:
         config:
-          dry_run: true  # Always dry run in staging
+          dry_run: true # Always dry run in staging
       development:
         guards:
-          disable: ["business_hours_only", "payment_rate_limit"]  # Relaxed rules for dev 
+          disable: ["business_hours_only", "payment_rate_limit"] # Relaxed rules for dev
