@@ -1,0 +1,1 @@
+{"type": "rate_limit", "maxRequests": 2, "windowMs": 3600000, "keyGenerator": "user"}

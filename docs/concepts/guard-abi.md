@@ -12,10 +12,10 @@ All guards must implement the `Guard` interface:
 export interface Guard {
   readonly name: string;
   readonly type: "rbac" | "rate_limit" | "audit" | "custom";
-  
+
   init(ctx: GuardCtx): Promise<void>;
-  validate(i: GuardInput): Promise<GuardResult>;  // dry-run
-  execute(i: GuardInput): Promise<GuardResult>;   // may mutate state
+  validate(i: GuardInput): Promise<GuardResult>; // dry-run
+  execute(i: GuardInput): Promise<GuardResult>; // may mutate state
   cleanup(): Promise<void>;
 }
 ```
@@ -32,11 +32,13 @@ export interface Guard {
 ## Guard Types (v0.1 Scope)
 
 ### RBAC Guard
+
 - **Purpose**: Role-based access control
 - **Config**: `requiredRoles`, `requiredPermissions`, `allowSuperuser`
 - **Behavior**: Blocks execution if user lacks required roles/permissions
 
 **Example Configuration:**
+
 ```yaml
 guards:
   - name: admin_only
@@ -50,31 +52,34 @@ guards:
 ```
 
 **Example Implementation:**
+
 ```typescript
 // Check superuser bypass
-if (this.config.allowSuperuser && user.roles.includes('superuser')) {
-  return { status: 'success', message: 'Superuser access granted' };
+if (this.config.allowSuperuser && user.roles.includes("superuser")) {
+  return { status: "success", message: "Superuser access granted" };
 }
 
 // Check required roles
-const hasRequiredRole = this.config.requiredRoles.some(role => 
-  user.roles.includes(role)
+const hasRequiredRole = this.config.requiredRoles.some((role) =>
+  user.roles.includes(role),
 );
 
 if (!hasRequiredRole) {
   return {
-    status: 'block',
-    message: `Access denied: requires one of roles [${this.config.requiredRoles.join(', ')}]`
+    status: "block",
+    message: `Access denied: requires one of roles [${this.config.requiredRoles.join(", ")}]`,
   };
 }
 ```
 
 ### Rate Limit Guard
+
 - **Purpose**: Throttle execution frequency
 - **Config**: `maxRequests`, `windowMs`, `keyGenerator`
 - **Behavior**: Returns `delay` status with `retryAfterMs` when limit exceeded
 
 **Example Configuration:**
+
 ```yaml
 guards:
   - name: api_rate_limit
@@ -82,7 +87,7 @@ guards:
     config:
       type: rate_limit
       maxRequests: 100
-      windowMs: 60000  # 1 minute
+      windowMs: 60000 # 1 minute
       keyGenerator: user
     apply_to:
       edges: ["api_call_edge"]
@@ -91,6 +96,7 @@ guards:
 ## Input/Output Types
 
 ### GuardInput
+
 ```typescript
 interface GuardInput {
   correlationId: string;
@@ -102,11 +108,12 @@ interface GuardInput {
 ```
 
 ### GuardResult
+
 ```typescript
 interface GuardResult {
   status: "success" | "block" | "delay" | "warn";
   message?: string;
-  retryAfterMs?: number;  // only for "delay"
+  retryAfterMs?: number; // only for "delay"
   meta?: Record<string, unknown>;
 }
 ```
@@ -126,28 +133,31 @@ export class GuardRuntimeError extends GuardError
 All guard configurations are validated against `/docs/schemas/guard-config-schema.json`. Unknown fields will fail validation.
 
 ### RBAC Config Schema
+
 ```json
 {
   "type": "rbac",
-  "requiredRoles": ["admin"],           // required
-  "requiredPermissions": ["write"],     // optional
-  "allowSuperuser": true                // optional, default: false
+  "requiredRoles": ["admin"], // required
+  "requiredPermissions": ["write"], // optional
+  "allowSuperuser": true // optional, default: false
 }
 ```
 
 ### Rate Limit Config Schema
+
 ```json
 {
   "type": "rate_limit",
-  "maxRequests": 100,                   // required, 1-10000
-  "windowMs": 60000,                    // required, 1s-24h
-  "keyGenerator": "user"                // optional, default: "user"
+  "maxRequests": 100, // required, 1-10000
+  "windowMs": 60000, // required, 1s-24h
+  "keyGenerator": "user" // optional, default: "user"
 }
 ```
 
 ## Example Implementations
 
 See `/examples/guards/` for complete reference implementations:
+
 - `noop-guard.ts` - Always returns success (used in tests)
 - `rbac-guard.ts` - Role-based access control implementation
 
@@ -161,4 +171,4 @@ User Request → Engine → Guard.validate() → Guard.execute() → Continue/Bl
 
 ---
 
-**Note**: This is v0.1 scope. Audit and temporal guards will be added in post-v0.1 releases. 
+**Note**: This is v0.1 scope. Audit and temporal guards will be added in post-v0.1 releases.

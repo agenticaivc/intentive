@@ -8,7 +8,7 @@ metadata:
   description: "Production-ready payroll workflow demonstrating enhanced schema validation"
   version: "1.0.0"
   author: "intentive-schema-team"
-  created: "2024-01-15T10:00:00Z"
+  created: "2025-01-15T10:00:00Z"
   tags: ["payroll", "finance", "production", "schema-demo"]
 
 spec:
@@ -183,7 +183,7 @@ spec:
       metadata: {}
 
   guards:
-    # RBAC protection for all operations
+    # RBAC protection for all operations (v0.1 compatible)
     - name: "payroll_access_control"
       type: "rbac"
       description: "Role-based access control for payroll operations"
@@ -197,62 +197,23 @@ spec:
           ]
         edges: ["auth_to_approval"]
       config:
-        required_roles: ["payroll_admin", "finance_manager"]
-        required_permissions: ["payroll:read", "payroll:write"]
-        check_mode: "strict"
-        failure_action: "block"
+        type: "rbac"
+        requiredRoles: ["payroll_admin", "finance_manager"]
+        requiredPermissions: ["payroll:read", "payroll:write"]
+        allowSuperuser: false
       metadata: {}
 
-    # Rate limiting for payment processing
+    # Rate limiting for payment processing (v0.1 compatible)
     - name: "payment_rate_limiter"
       type: "rate_limit"
       description: "Prevent excessive payment processing requests"
       apply_to:
         nodes: ["execute_payment_processing"]
       config:
-        max_requests: 2
-        time_window: "1h"
-        per_user: true
-        failure_action: "delay"
-      metadata: {}
-
-    # Audit logging
-    - name: "financial_audit_trail"
-      type: "audit"
-      description: "Complete audit trail for financial operations"
-      apply_to:
-        nodes: ["execute_payment_processing", "verify_payroll_approval"]
-      config:
-        log_level: "info"
-        include_parameters: true
-        retention_days: 2555
-        encrypt_logs: true
-      metadata: {}
-
-    # Business hours enforcement
-    - name: "business_hours_restriction"
-      type: "temporal"
-      description: "Restrict payment processing to business hours"
-      apply_to:
-        nodes: ["execute_payment_processing"]
-      config:
-        allowed_days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
-        allowed_hours:
-          start: "09:00"
-          end: "17:00"
-        timezone: "America/New_York"
-        failure_action: "block"
-      metadata: {}
-
-    # Custom business rule validation
-    - name: "payroll_business_validation"
-      type: "custom"
-      description: "Enforce company-specific payroll business rules"
-      apply_to:
-        nodes: ["execute_payment_processing"]
-      config:
-        handler: "payroll.validate_business_rules"
-        failure_action: "block"
+        type: "rate_limit"
+        maxRequests: 2
+        windowMs: 3600000
+        keyGenerator: "user"
       metadata: {}
 
   config:

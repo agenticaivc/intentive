@@ -1,0 +1,1 @@
+{"type": "rbac", "requiredRoles": ["payroll_admin", "finance_manager"], "requiredPermissions": ["payroll:read", "payroll:write"], "allowSuperuser": false}

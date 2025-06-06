@@ -10,7 +10,7 @@ metadata:
   description: "Example intent graph schema"
   version: "1.0.0"
   author: "intentive"
-  created: "2024-01-01T00:00:00Z"
+  created: "2025-01-01T00:00:00Z"
 spec:
   # Collection of intent nodes - individual executable operations or decision points
   nodes:
@@ -46,7 +46,7 @@ spec:
             required: true
             description: "Payroll period in YYYY-MM format"
             pattern: "^[0-9]{4}-[0-9]{2}$"
-            example: "2024-01"
+            example: "2025-01"
           - name: "employees"
             type: "array"
             required: false
@@ -301,7 +301,7 @@ spec:
           end: "17:00"
         timezone: "America/New_York"
         exceptions:
-          - date: "2024-12-31" # Year-end processing
+          - date: "2025-12-31" # Year-end processing
             hours:
               start: "00:00"
               end: "23:59"

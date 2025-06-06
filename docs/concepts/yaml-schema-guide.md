@@ -46,7 +46,7 @@ metadata:
   description: "Simplest possible intent graph for getting started"
   version: "1.0.0"
   author: "intentive-docs"
-  created: "2024-01-15T10:00:00Z"
+  created: "2025-01-15T10:00:00Z"
 
 spec:
   nodes:
@@ -89,6 +89,7 @@ spec:
 ```
 
 This example is available as `docs/examples/minimal-workflow.yaml` and demonstrates:
+
 - Required top-level fields (`apiVersion`, `kind`, `metadata`, `spec`)
 - Single action node with complete parameter definitions
 - Output specification with object properties

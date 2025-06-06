@@ -46,7 +46,7 @@ grep -n "send.*Email|send.*Slack|sendAlert|createManualAlert" src/utils/alert-en
 
 ### Branch Naming Convention
 - Format: `issue{N}-claude-YYYYMMDD_HHMMSS`
-- Example: `issue123-claude-20240315_143022`
+- Example: `issue123-claude-20250315_143022`
 
 ### Validation Checkpoints
 After each logical change:
