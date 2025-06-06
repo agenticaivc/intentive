@@ -1,0 +1,136 @@
+name: Gateway CI
+
+on:
+  push:
+    branches: [main, develop, issueY-*]
+    paths:
+      - 'packages/gateway/**'
+      - '.github/workflows/gateway-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'packages/gateway/**'
+      - '.github/workflows/gateway-ci.yml'
+
+jobs:
+  gateway-tests:
+    name: Gateway Package Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: 'packages/gateway/package-lock.json'
+          
+      - name: Install dependencies
+        working-directory: ./packages/gateway
+        run: npm ci
+        
+      - name: Check formatting with prettier
+        working-directory: ./packages/gateway
+        run: npm run format:check
+        
+      - name: Run ESLint
+        working-directory: ./packages/gateway
+        run: npm run lint -- --max-warnings=0
+        
+      - name: TypeScript compilation check
+        working-directory: ./packages/gateway
+        run: npx tsc --noEmit --skipLibCheck
+        
+      - name: Run tests
+        working-directory: ./packages/gateway
+        run: npm test
+        
+      - name: Build production bundle
+        working-directory: ./packages/gateway
+        run: npm run build
+
+  integration-tests:
+    name: Gateway Integration Tests
+    runs-on: ubuntu-latest
+    needs: [gateway-tests]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: 'packages/gateway/package-lock.json'
+          
+      - name: Install dependencies
+        working-directory: ./packages/gateway
+        run: npm ci
+        
+      - name: Build gateway
+        working-directory: ./packages/gateway
+        run: npm run build
+        
+      - name: Test health endpoint
+        working-directory: ./packages/gateway
+        run: |
+          npm start &
+          GATEWAY_PID=$!
+          sleep 3
+          RESPONSE=$(curl -s http://localhost:4000/health)
+          kill $GATEWAY_PID
+          echo $RESPONSE | jq -e '.status=="ok"'
+          
+      - name: Test intent endpoint
+        working-directory: ./packages/gateway
+        run: |
+          npm start &
+          GATEWAY_PID=$!
+          sleep 3
+          RESPONSE=$(curl -s -X POST http://localhost:4000/intent \
+            -H "Content-Type: application/json" \
+            -d '{"ask":"hello world"}')
+          kill $GATEWAY_PID
+          echo $RESPONSE | jq -e '.executionId | test("^[0-9a-f-]{36}$")'
+          
+      - name: Test schema validation
+        working-directory: ./packages/gateway
+        run: |
+          npm start &
+          GATEWAY_PID=$!
+          sleep 3
+          STATUS=$(curl -s -X POST http://localhost:4000/intent \
+            -H "Content-Type: application/json" \
+            -d '{"ask":"hello","extra":"field"}' \
+            -w "%{http_code}" -o /dev/null)
+          kill $GATEWAY_PID
+          test $STATUS -eq 400
+
+  docker-tests:
+    name: Docker Integration
+    runs-on: ubuntu-latest
+    needs: [gateway-tests]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Build Docker image
+        working-directory: ./packages/gateway
+        run: docker build -f Dockerfile.dev -t gateway-dev .
+        
+      - name: Test Docker container
+        run: |
+          docker run -d -p 4100:4000 --name gw gateway-dev
+          sleep 5
+          curl -sf http://localhost:4100/health
+          docker rm -f gw 

@@ -10,7 +10,7 @@
 |-----------|------|--------|
 | **Intent Graph YAML schema** | `docs/schemas/intent-graph-schema.{yaml,json}` | ✅ |
 | **Guard ABI** | `packages/guards/src/GuardABI.ts` | ✅ |
-| **Reference gateway (α)** | `packages/gateway/` | 🚧 |
+| **Reference gateway** | `packages/gateway/` | ✅ |
 | **Examples** | `docs/examples/` | ✅ minimal & [payroll](docs/examples/payroll-graph.yaml) |
 
 ---
@@ -28,17 +28,19 @@ npm run schema:test      # validates YAML examples
 # 3. Try the payroll example
 cat docs/examples/payroll-graph.yaml  # view the complete payroll workflow
 
-# 4. Spin up the gateway (will prompt for OpenAI key)
-npm run dev
+# 4. Start the gateway
+npm run gateway:dev
+# Open http://localhost:4000/health ➜ {"status":"ok"}
 ```
 
-Open <http://localhost:4000/console>, paste:
+Test the intent endpoint:
 
+```bash
+curl -X POST http://localhost:4000/intent \
+  -H "Content-Type: application/json" \
+  -d '{"ask":"Process payroll for 2025-05"}'
+# Returns: {"executionId":"uuid-v4-here"}
 ```
-Process payroll for 2025-05
-```
-
-and watch the guard checks fire.
 
 ---
 

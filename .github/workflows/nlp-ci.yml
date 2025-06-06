@@ -1,0 +1,56 @@
+name: NLP CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'packages/nlp/**'
+      - '.github/workflows/nlp-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'packages/nlp/**'
+      - '.github/workflows/nlp-ci.yml'
+
+jobs:
+  nlp-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: packages/nlp/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd packages/nlp
+        npm ci
+        
+    - name: Lint
+      run: |
+        cd packages/nlp
+        npm run lint
+        
+    - name: TypeScript compilation
+      run: |
+        cd packages/nlp
+        npx tsc --noEmit --skipLibCheck
+        
+    - name: Run tests
+      run: |
+        cd packages/nlp
+        npm test
+        
+    - name: Strict TypeScript check
+      run: |
+        cd packages/nlp
+        npx tsc -p tsconfig.json --noEmit --strict 

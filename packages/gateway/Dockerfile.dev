@@ -1,0 +1,19 @@
+# Development Dockerfile - simplified for testing
+FROM node:18-slim
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --omit=dev
+
+# Copy built application
+COPY dist/ ./dist/
+
+# Expose port
+EXPOSE 4000
+
+# Start production server
+CMD ["npm", "start"] 

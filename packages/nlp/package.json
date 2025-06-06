@@ -1,0 +1,31 @@
+{
+  "name": "@intentive/nlp",
+  "version": "0.1.0",
+  "description": "OpenAI NLP integration for intent extraction",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "lint": "tsc --noEmit --skipLibCheck"
+  },
+  "keywords": ["openai", "nlp", "intent", "extraction"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "openai": "^4.47.1",
+    "pino": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.4",
+    "typescript": "^5.8.3"
+  }
+}

@@ -2,6 +2,9 @@
   "name": "intentive",
   "version": "1.0.0",
   "description": "Intent graph automation platform",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,6 +14,11 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:guards": "jest packages/guards/tests/",
+    "test:gateway": "jest -c packages/gateway/jest.config.js",
+    "gateway:dev": "cd packages/gateway && npm run dev",
+    "gateway:build": "cd packages/gateway && npm run build",
+    "gateway:test": "cd packages/gateway && npm test",
+    "gateway:lint": "cd packages/gateway && npm run lint",
     "schema:validate": "ajv validate -s docs/schemas/intent-graph-schema.json -d 'docs/examples/*.yaml' --verbose",
     "schema:test": "npm run schema:validate && npm run schema:test:guard-config && npm run schema:check-keywords",
     "schema:test:guard-config": "npx ajv-cli compile -s docs/schemas/guard-config-schema.json",
