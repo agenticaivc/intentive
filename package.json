@@ -51,6 +51,7 @@
     "ts-jest": "^29.3.4",
     "ts-morph": "^21.0.1",
     "typescript": "^5.8.3",
+    "vitest": "^1.0.0",
     "yaml": "^2.3.4"
   },
   "engines": {
