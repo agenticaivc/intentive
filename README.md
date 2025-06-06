@@ -231,6 +231,35 @@ Open in your browser:
 chmod +x scripts/test-api.sh && ./scripts/test-api.sh
 ```
 
+## 🔧 **Troubleshooting**
+
+**Gateway not starting?**
+```bash
+# Check if port 4000 is already in use
+lsof -i :4000
+# Kill any existing process and restart
+npm run gateway:dev
+```
+
+**API calls failing?**
+```bash
+# Verify gateway is running
+curl http://localhost:4000/__health
+# Should return: {"status":"ok"}
+```
+
+**Can't find executionId?**
+```bash
+# List recent executions to get valid IDs
+curl http://localhost:4000/intent?limit=5
+```
+
+**Empty list results?**
+```bash
+# Create a test execution first
+curl -X POST http://localhost:4000/intent -H "Content-Type: application/json" -d '{"ask":"Test"}'
+```
+
 ---
 
 ## 📜 Documentation
