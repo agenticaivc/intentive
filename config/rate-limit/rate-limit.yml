@@ -1,0 +1,73 @@
+enabled: true
+dryRun: false
+failOpen: false  # Enable fail-strict mode for validation
+failStrictTimeoutMs: 10000
+
+# Redis cluster configuration for clusterSha validation
+redis:
+  cluster:
+    nodes:
+      - "127.0.0.1:7000"
+      - "127.0.0.1:7001" 
+      - "127.0.0.1:7002"
+    enableDnsDiscovery: false
+  aclUsername: "ratelimit_user"
+  aclPassword: "secure_password_123"
+  connectTimeout: 5000
+  commandTimeout: 5000
+  retryDelayOnFailover: 100
+  maxRetriesPerRequest: 3
+  lazyConnect: true
+
+# Network configuration for IPv6 validation
+network:
+  trustedProxies:
+    - "127.0.0.1"
+    - "::1"
+    - "10.0.0.0/8"
+    - "192.168.0.0/16"
+    - "172.16.0.0/12"
+    - "2001:db8::/32"  # IPv6 trusted range
+  ipv6CidrBits: 64
+  maxXForwardedForEntries: 10
+  enableIpv6Bucketing: true
+
+# Global rate limiting rules
+globalRules:
+  windowSeconds: 60
+  maxRequests: 100
+  burstLimit: 20
+  bypassRoles:
+    - "admin"
+    - "service-account"
+
+# Endpoint-specific rules
+endpointRules:
+  - path: "/api/auth/*"
+    method: "POST"
+    rules:
+      windowSeconds: 300  # 5 minutes
+      maxRequests: 5      # Strict auth rate limiting
+      burstLimit: 2
+      
+  - path: "/api/search"
+    rules:
+      windowSeconds: 60
+      maxRequests: 200
+      burstLimit: 50
+      
+  - path: "/api/upload"
+    method: "POST"
+    rules:
+      windowSeconds: 3600  # 1 hour
+      maxRequests: 10
+      burstLimit: 3
+
+# Metrics configuration for cardinality validation
+metricsEnabled: true
+metricsPort: 9090
+maxMetricsCardinality: 10000
+
+# Dynamic reload configuration
+configVersion: "1.0.0"
+allowDynamicReload: true 
