@@ -32,6 +32,12 @@ pnpm install
 
 # 2. Run the payroll demo  
 pnpm payroll:demo
+
+# 3. Check execution status (NEW!)
+curl http://localhost:4000/intent/{execution-id}
+
+# 4. List all executions (NEW!)
+curl http://localhost:4000/intent
 ```
 
 **Expected Output:**
@@ -44,6 +50,50 @@ pnpm payroll:demo
 📊 Results: 5 nodes executed, 0 errors
 ⏱️  Execution time: 304ms
 ```
+
+## 📊 Step 4: List All Executions
+
+View and filter your execution history:
+
+```bash
+# List recent executions (default: 20 items)
+curl http://localhost:4000/intent
+
+# Filter by status
+curl "http://localhost:4000/intent?status=completed"
+
+# Multiple status filter
+curl "http://localhost:4000/intent?status=completed,failed"
+
+# Pagination (limit results)
+curl "http://localhost:4000/intent?limit=5"
+
+# Cursor-based pagination
+curl "http://localhost:4000/intent?limit=5&cursor={executionId}"
+```
+
+**List Response:**
+```json
+{
+  "items": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "graph": "payroll",
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "status": "completed",
+      "durationMs": 304,
+      "user": { "id": "anonymous" }
+    }
+  ],
+  "nextCursor": "550e8400-e29b-41d4-a716-446655440001"
+}
+```
+
+**Query Parameters:**
+- `status` - Filter by execution status (queued, running, completed, failed)
+- `limit` - Maximum items per page (1-100, default: 20)
+- `cursor` - Execution ID for pagination
+- `user` - Filter by user ID (admin only)
 
 ## 🎮 Interactive Playground
 

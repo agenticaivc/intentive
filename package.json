@@ -55,10 +55,10 @@
     "prettier": "^3.5.3",
     "ts-jest": "^29.3.4",
     "ts-morph": "^21.0.1",
+    "tsx": "^4.7.0",
     "typescript": "^5.8.3",
     "vitest": "^1.0.0",
-    "yaml": "^2.3.4",
-    "tsx": "^4.7.0"
+    "yaml": "^2.3.4"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -70,5 +70,5 @@
     "js-yaml": "^4.1.0",
     "zod": "^3.25.53"
   },
-  "packageManager": "pnpm@8.15.9+sha512.499434c9d8fdd1a2794ebf4552b3b25c0a633abcee5bb15e7b5de90f32f47b513aca98cd5cfd001c31f0db454bc3804edccd578501e4ca293a6816166bbd9f81"
+  "packageManager": "pnpm@10.11.1"
 }

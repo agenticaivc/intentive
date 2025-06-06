@@ -7,6 +7,7 @@ import { ConcurrencyManager } from './ConcurrencyManager';
 import { GraphQLFallback } from './graphql/GraphQLFallback';
 import { cfg, isGraphQLEnabled } from './graphql/config';
 import { logFallbackSkipped } from './graphql/logger';
+import { executionStoreHook } from './hooks/executionStoreHook';
 
 export interface ExecutorOptions {
   logger?: typeof console;
@@ -38,6 +39,9 @@ export class Executor {
     try {
       this.logger.info(`Execution started - graph: ${graph.metadata.name}, nodes: ${graph.spec.nodes.length}`);
       
+      // HOOK: Notify execution start
+      await executionStoreHook.onExecutionStart(context.executionId, context, graph);
+      
       // Phase 1: Initialization
       const executionContext = await this.initializeExecution(graph, context);
       
@@ -49,12 +53,15 @@ export class Executor {
       
       this.logger.info(`Execution complete - duration: ${result.executionTime}ms, success: ${result.completedNodes.length}, failed: ${result.failedNodes.length}`);
       
+      // HOOK: Notify execution complete
+      await executionStoreHook.onExecutionComplete(context.executionId, result);
+      
       return result;
       
     } catch (error) {
       this.logger.error(`Execution failed: ${error instanceof Error ? error.message : error}`);
       
-      return {
+      const failureResult = {
         success: false,
         completedNodes: [],
         failedNodes: [],
@@ -62,6 +69,11 @@ export class Executor {
         executionTime: Date.now() - startTime,
         error: error instanceof Error ? error : new Error(String(error))
       };
+      
+      // HOOK: Notify execution failed
+      await executionStoreHook.onExecutionFailed(context.executionId, failureResult.error);
+      
+      return failureResult;
     }
   }
 

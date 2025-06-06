@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "dotenv -e ../../.env -- ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc --build",
     "start": "node dist/server.js",
     "lint": "eslint src/**/*.ts",
@@ -54,7 +54,8 @@
     "prettier": "^3.5.3",
     "validator": "^13.11.0",
     "@types/validator": "^13.11.8",
-    "ts-morph": "^21.0.1"
+    "ts-morph": "^21.0.1",
+    "dotenv-cli": "^7.4.2"
   },
   "engines": {
     "node": ">=18.0.0"

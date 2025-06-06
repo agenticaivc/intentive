@@ -63,6 +63,176 @@ curl -X POST http://localhost:4000/intent \
 
 ---
 
+## 🧪 **Step-by-Step API Testing Guide**
+
+**Human-friendly walkthrough** - exactly what you'd do to test the API:
+
+## ⚡ **Quick Test (30 seconds)**
+```bash
+# 1. Create an intent
+curl -X POST http://localhost:4000/intent -H "Content-Type: application/json" -d '{"ask":"Test payroll"}'
+
+# 2. List all executions  
+curl http://localhost:4000/intent
+
+# 3. Filter by status
+curl "http://localhost:4000/intent?status=queued"
+```
+**Expected:** JSON responses showing intent creation → listing → filtering ✅
+
+---
+
+### **Step 1: Check if the server is running**
+```bash
+curl http://localhost:4000/__health
+```
+**Expected:** `{"status":"ok"}`  
+**Showcases:** Gateway is up and responding
+
+---
+
+### **Step 2: Create your first intent execution**
+```bash
+curl -X POST http://localhost:4000/intent \
+  -H "Content-Type: application/json" \
+  -d '{"ask":"Process December payroll"}'
+```
+**Expected:** `{"executionId":"550e8400-e29b-41d4-a716-446655440000"}`  
+**Showcases:** Natural language → structured execution
+
+---
+
+### **Step 3: Check the execution status**
+```bash
+# Use the executionId from Step 2
+curl http://localhost:4000/intent/550e8400-e29b-41d4-a716-446655440000
+```
+**Expected:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "graph": "payroll",
+  "status": "completed",
+  "durationMs": 150,
+  "user": {"id": "anonymous"}
+}
+```
+**Showcases:** Real-time execution tracking with performance metrics
+
+---
+
+### **Step 4: List all your executions**
+```bash
+curl http://localhost:4000/intent
+```
+**Expected:**
+```json
+{
+  "items": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "graph": "payroll",
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "status": "completed",
+      "durationMs": 150,
+      "user": {"id": "anonymous"}
+    }
+  ]
+}
+```
+**Showcases:** Complete execution history (most recent first)
+
+---
+
+### **Step 5: Create multiple intents to see filtering**
+```bash
+# Create a few more for testing
+curl -X POST http://localhost:4000/intent -H "Content-Type: application/json" -d '{"ask":"Generate financial report"}'
+curl -X POST http://localhost:4000/intent -H "Content-Type: application/json" -d '{"ask":"Run compliance audit"}'
+curl -X POST http://localhost:4000/intent -H "Content-Type: application/json" -d '{"ask":"Process employee benefits"}'
+```
+**Expected:** 3 more executionIds  
+**Showcases:** Rapid intent processing
+
+---
+
+### **Step 6: Filter by status**
+```bash
+# See only queued executions
+curl "http://localhost:4000/intent?status=queued"
+```
+**Expected:** Only executions with `"status": "queued"`  
+**Showcases:** Smart filtering for workflow management
+
+---
+
+### **Step 7: Try multiple status filters**
+```bash
+# See completed AND failed executions
+curl "http://localhost:4000/intent?status=completed,failed"
+```
+**Expected:** Mix of completed and failed executions  
+**Showcases:** Flexible multi-criteria filtering
+
+---
+
+### **Step 8: Test pagination**
+```bash
+# Get only 2 results
+curl "http://localhost:4000/intent?limit=2"
+```
+**Expected:**
+```json
+{
+  "items": [...2 items...],
+  "nextCursor": "def-456-ghi-789"
+}
+```
+**Showcases:** Cursor-based pagination for large datasets
+
+---
+
+### **Step 9: Use the cursor for next page**
+```bash
+# Use the nextCursor from Step 8
+curl "http://localhost:4000/intent?limit=2&cursor=def-456-ghi-789"
+```
+**Expected:** Next 2 executions (different from previous page)  
+**Showcases:** Seamless pagination navigation
+
+---
+
+### **Step 10: Browser testing (optional)**
+Open in your browser:
+- **Health check:** http://localhost:4000/__health
+- **List executions:** http://localhost:4000/intent
+- **Filtered view:** http://localhost:4000/intent?status=completed&limit=1
+
+**Showcases:** RESTful API works in browsers too
+
+---
+
+## 🎯 **What This Demonstrates**
+
+| Feature | API Call | Business Value |
+|---------|----------|----------------|
+| **Natural Language Processing** | `POST /intent` | Non-technical users can create workflows |
+| **Real-time Tracking** | `GET /intent/:id` | Monitor execution progress & performance |
+| **Workflow Management** | `GET /intent?status=queued` | Focus on active/pending tasks |
+| **Audit & History** | `GET /intent` | Complete execution trail for compliance |
+| **Scalable Pagination** | `GET /intent?limit=10&cursor=...` | Handle thousands of executions efficiently |
+| **15-Minute Guarantee** | All endpoints < 100ms | Enterprise-grade performance SLA |
+
+---
+
+**🎬 One-Click Demo Script:**
+```bash
+# Make executable and run comprehensive test
+chmod +x scripts/test-api.sh && ./scripts/test-api.sh
+```
+
+---
+
 ## 📜 Documentation
 * **Getting Started** – [intentive.dev/docs](https://intentive.dev/docs)
 * **Schema guide** – `docs/concepts/yaml-schema-guide.md`  
