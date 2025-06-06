@@ -280,8 +280,8 @@ Build your own: Follow docs/concepts/yaml-schema-guide.md
 | Milestone | Target | Issue labels |
 |-----------|--------|--------------|
 | **v0.1** – spec + TCK + guard ABI | 2025-07 | `v0.1` |
-| **v0.2** – playground UI, Rust SDK | 2025-Q3 | `v0.2` |
-| **v1.0** – CNCF sandbox application | 2026-Q1 | `v1.0` |
+| **v0.2** – playground UI, Rust SDK | 2025-Q2 | `v0.2` |
+| **v1.0** – CNCF sandbox application | 2026-Q3 | `v1.0` |
 
 ---
 
