@@ -1,0 +1,38 @@
+[build]
+builder = "dockerfile"
+dockerfile = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/__health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[[deploy.envs]]
+name = "NODE_ENV"
+value = "production"
+
+[[deploy.envs]]
+name = "PORT"
+value = "4000"
+
+[[deploy.envs]]
+name = "HOST"
+value = "0.0.0.0"
+
+[[deploy.envs]]
+name = "LOG_LEVEL"
+value = "info"
+
+# Optional: Uncomment and set these environment variables as needed
+# [[deploy.envs]]
+# name = "OPENAI_API_KEY"
+# value = "${{OPENAI_API_KEY}}"
+
+# [[deploy.envs]]
+# name = "REDIS_URL"
+# value = "${{REDIS_URL}}"
+
+# [[deploy.envs]]
+# name = "GRAPHQL_ENDPOINT"
+# value = "${{GRAPHQL_ENDPOINT}}" 
